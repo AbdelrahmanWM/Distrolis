@@ -1,0 +1,31 @@
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+Debug/
+Release/
+*.pdb
+*.ilk
+*.log
+
+# C++ specific
+*.obj
+*.o
+*.exe
+*.out
+*.app
+*.dSYM/
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+
+# Libraries
+*.lib
+*.a
+
+# Build directories
+bin/
+obj/
+build/
