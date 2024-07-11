@@ -1,4 +1,4 @@
-#include "../include/XmlParser.h"
+#include "XmlParser.h"
 
 XmlParser::XmlParser()
 {
@@ -44,7 +44,6 @@ xmlXPathObjectPtr XmlParser::evaluateXPathExpression(xmlXPathContextPtr xpathCtx
     if (xpathObj == nullptr) {
         throw std::runtime_error("Failed to evaluate xPath expression.");
     }
-    std::cout << "XPath expression evaluated." << std::endl;
     return xpathObj;
 }
 
@@ -52,8 +51,6 @@ std::vector<std::string> XmlParser::extractLinks(const std::string& htmlContent)
     std::vector<std::string>links;
     xmlDocPtr doc = loadHtmlDocument(htmlContent);
     xmlXPathContextPtr xpathCtx = createXPathContext(doc);
-    std::cout << xpathCtx;
-    // Debug information about the XPath context
     std::string xpathEpxr = "//a[@href]";
     xmlXPathObjectPtr xpathObj = evaluateXPathExpression(xpathCtx, xpathEpxr);
     xmlNodeSetPtr nodes = xpathObj->nodesetval;
@@ -61,7 +58,6 @@ std::vector<std::string> XmlParser::extractLinks(const std::string& htmlContent)
         xmlNodePtr node = nodes->nodeTab[i];
         xmlChar* href = xmlGetProp(node, reinterpret_cast <const xmlChar*>("href"));
         if (href != nullptr) {
-            std::cout << "Found link: " << href << std::endl;
             links.push_back(reinterpret_cast<const char*> (href));
             xmlFree(href);
         }

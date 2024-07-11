@@ -1,12 +1,10 @@
-#include "../include/WebCrawler.h"
-
+#include "WebCrawler.h"
+#include "XmlParser.h"
 
 WebCrawler::WebCrawler(const std::string& seed_url, int max_pages_to_crawl)
 	: m_max_pages_to_crawl(max_pages_to_crawl)
 {
-
 	m_frontier.push(seed_url);
-	std::cout<<fetchPage(seed_url)<<'\n';/// TEST
 }
 
 WebCrawler::~WebCrawler() {
@@ -15,11 +13,19 @@ WebCrawler::~WebCrawler() {
 
 void WebCrawler::run() {
 	while (!m_frontier.empty() && m_crawled_pages.size() < m_max_pages_to_crawl) {
-		
+		std::string htmlContent = fetchPage(m_frontier.front());
+		parsePage(htmlContent);
+		m_frontier.pop();
 	}
 }
-void WebCrawler::parsePage(const std::string& url) {
-
+void WebCrawler::parsePage(const std::string& htmlContent) {
+	XmlParser parser;
+	std::vector<std::string> links = parser.extractLinksFromHTML(htmlContent);
+	for (const auto& link : links) {
+		m_frontier.push(link);
+	}
+	m_crawled_pages.insert(htmlContent);
+	
 }
 std::string WebCrawler::fetchPage(const std::string& url) {
 	std::cout << "URL: " << url << '\n';
@@ -30,7 +36,7 @@ std::string WebCrawler::fetchPage(const std::string& url) {
 	if (!curl) {
 		throw std::runtime_error("Failed to initialize libcurl for WebCrawler instance.\n");
 	}
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); Debug mode!
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);

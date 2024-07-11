@@ -78,6 +78,12 @@
     <IncludePath>C:\cmder\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
     <LibraryPath>C:\cmder\vcpkg\installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -139,11 +145,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="source\Distributed Search Engine.cpp" />
+    <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\WebCrawler.cpp" />
+    <ClCompile Include="source\XmlParser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\WebCrawler.h" />
+    <ClInclude Include="include\XmlParser.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
