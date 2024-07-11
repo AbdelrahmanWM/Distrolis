@@ -1,4 +1,4 @@
-#include "WebCrawler.h"
+#include "../include/WebCrawler.h"
 
 
 WebCrawler::WebCrawler(const std::string& seed_url, int max_pages_to_crawl)

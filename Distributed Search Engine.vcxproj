@@ -139,11 +139,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Distributed Search Engine.cpp" />
-    <ClCompile Include="WebCrawler.cpp" />
+    <ClCompile Include="source\Distributed Search Engine.cpp" />
+    <ClCompile Include="source\WebCrawler.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="WebCrawler.h" />
+    <ClInclude Include="include\WebCrawler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
