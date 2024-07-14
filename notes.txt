@@ -1,0 +1,4 @@
+### for later improvements
+* implement multithreading
+* use manual parsing instead of xpath
+* 

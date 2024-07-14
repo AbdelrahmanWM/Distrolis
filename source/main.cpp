@@ -4,7 +4,7 @@
 int main()
 {
 	curl_global_init(CURL_GLOBAL_ALL);
-	WebCrawler webCrawler{ static_cast<std::string>("https://github.com/AbdelrahmanWM/AbdelrahmanWM/blob/main/README.md") ,1};
+	WebCrawler webCrawler{ static_cast<std::string>("https://www.youtube.com/") ,2};
 	webCrawler.run();
 	curl_global_cleanup();
 }
