@@ -1,9 +1,19 @@
 #include <iostream>
-#include "WebCrawler.h";
+#include "WebCrawler.h"
+#include "DataBase.h"
 
-int main()
+int main(int argc, char*argv[])
 {
+	if (argc < 2) {
+		std::cerr << "Usage: " << argv[0] << " <MongoDB connection string>"
+			<< std::endl;
+		return EXIT_FAILURE;
+	}
+	const std::string connectionString = argv[1];
+	DataBase* db = DataBase::getInstance(connectionString);
+
 	curl_global_init(CURL_GLOBAL_ALL);
+
 	WebCrawler webCrawler{ static_cast<std::string>("https://www.youtube.com/") ,2};
 	webCrawler.run();
 	curl_global_cleanup();

@@ -1,5 +1,5 @@
 #include "WebCrawler.h"
-#include "XmlParser.h"
+#include "HTMLParser.h"
 
 WebCrawler::WebCrawler(const std::string& seed_url, int max_pages_to_crawl)
 	: m_max_pages_to_crawl(max_pages_to_crawl)
@@ -19,7 +19,7 @@ void WebCrawler::run() {
 	}
 }
 void WebCrawler::parsePage(const std::string& htmlContent) {
-	XmlParser parser;
+	HTMLParser parser;
 	std::vector<std::string> links = parser.extractLinksFromHTML(htmlContent);
 	for (const auto& link : links) {
 		m_frontier.push(link);
