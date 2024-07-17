@@ -48,3 +48,17 @@ void DataBase::destroyInstance() {
     delete db;
     db = nullptr;
 }
+
+void DataBase::insertDocument(const std::string& collectionName, const bson_t* document)
+{
+    mongoc_collection_t* collection;
+    bson_error_t error;
+    collection = mongoc_client_get_collection(client, "SearchEngine", collectionName.c_str());
+    if (!mongoc_collection_insert_one(collection,document, nullptr, nullptr, &error)) {
+        std::cerr << "Failed to insert document: " << error.message << std::endl;
+    }
+    else {
+        std::cout << "Document inserted successfully." << std::endl;
+    }
+    mongoc_collection_destroy(collection);
+}
