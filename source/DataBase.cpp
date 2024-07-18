@@ -49,16 +49,35 @@ void DataBase::destroyInstance() {
     db = nullptr;
 }
 
-void DataBase::insertDocument(const std::string& collectionName, const bson_t* document)
+void DataBase::insertDocument(const std::string& collectionName, const bson_t* document) const
 {
-    mongoc_collection_t* collection;
+    std::cout << *bson_as_json(document,nullptr)<<"\n";
+    mongoc_collection_t* collection = nullptr;
     bson_error_t error;
-    collection = mongoc_client_get_collection(client, "SearchEngine", collectionName.c_str());
-    if (!mongoc_collection_insert_one(collection,document, nullptr, nullptr, &error)) {
-        std::cerr << "Failed to insert document: " << error.message << std::endl;
+    bool insertSuccess = false;
+    try {
+        collection = mongoc_client_get_collection(client, "SearchEngine", collectionName.c_str());
+        if (!collection) {
+            std::cerr << "Failed to get collection: " << collectionName << std::endl;
+            return;
+        }
+
+        std::cout << "Collection obtained successfully." << std::endl;
+
+        insertSuccess = mongoc_collection_insert_one(collection, document, nullptr, nullptr, &error);
+        if (!insertSuccess) {
+            std::cerr << "Failed to insert document: " << error.message << std::endl;
+        }
+        else {
+            std::cout << "Document inserted successfully." << std::endl;
+        }
     }
-    else {
-        std::cout << "Document inserted successfully." << std::endl;
+    catch (std::exception& ex) {
+        std::cerr << "Exception: " << ex.what() << std::endl;
     }
-    mongoc_collection_destroy(collection);
+
+    if (collection) {
+        mongoc_collection_destroy(collection);
+    }
 }
+

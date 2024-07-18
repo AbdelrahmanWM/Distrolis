@@ -9,7 +9,7 @@ class DataBase {
 public:
 	static DataBase* getInstance(const std::string& connectionString);
 	static void destroyInstance();
-	void insertDocument(const std::string& collectionName, const bson_t* document);
+	void insertDocument(const std::string& collectionName, const bson_t* document) const;
 
 private:
 	DataBase(const std::string& connectionString);
