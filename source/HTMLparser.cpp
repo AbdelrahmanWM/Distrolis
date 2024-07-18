@@ -1,5 +1,6 @@
 #include "HTMLParser.h"
 
+
 HTMLParser::HTMLParser()
 {
     xmlInitParser();
@@ -8,6 +9,14 @@ HTMLParser::HTMLParser()
 HTMLParser::~HTMLParser()
 {
     xmlCleanupParser();
+}
+void HTMLParser::extractAndStorePageDetails(const std::string& htmlContent, const std::string& url, const DataBase*& db)
+{
+
+
+    documentStructure document = extractElements(htmlContent, url);
+
+    db->insertDocument("pages", createBSONFromDocument(document));
 }
 std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string& htmlContent)
 {
@@ -22,35 +31,65 @@ std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string& htm
         std::cerr << "Error: " << ex.what() << std::endl;
     }
 }
-std::string HTMLParser::extractTitle(const std::string& htmlContent)
+HTMLParser::documentStructure  HTMLParser::extractElements(const::std::string& htmlContent,const std::string& url)
 {
-    htmlDocPtr doc = loadHtmlDocument(htmlContent);
-    std::string xpathExpr = "title";
-    xmlXPathContextPtr xpathCtx = createXPathContext(doc);
-    xmlXPathObjectPtr xpathObj = evaluateXPathExpression(xpathCtx,xpathExpr);
-    xmlNodeSetPtr nodes = xpathObj->nodesetval;
-    std::string title;
-    if (nodes->nodeNr > 0) {
-        title = (char*)xmlNodeGetContent(nodes->nodeTab[0]);
+    documentStructure document{};
+    xmlXPathContextPtr xpathCtx=nullptr;
+    htmlDocPtr doc=nullptr;
+    try {
+        doc = loadHtmlDocument(htmlContent);
+        xpathCtx = createXPathContext(doc);
+        document.title = extractElement(doc, xpathCtx, "//title");
+        document.description = extractElement(doc, xpathCtx, "//meta[@name='description']/@content");
+        document.keywords = extractElement(doc, xpathCtx, "//meta[@name='keywords']/@content");
+        document.author = extractElement(doc, xpathCtx, "//meta[@name='author']/@content");
+        document.publication_date = extractElement(doc, xpathCtx, "//meta[@name='publication_date']/@content");
+        document.last_modification_date = extractElement(doc, xpathCtx, "//meta[@name='last_modification_date']/@content");
+        document.language = extractElement(doc, xpathCtx, "//html/@lang");
+        document.content_type = extractElement(doc, xpathCtx, "//meta[@name='content-type']/@content");
+        document.tags = extractElement(doc, xpathCtx, "//meta[@name='tags']/@content");
+        document.image_links = extractElement(doc, xpathCtx, "//img/@src");
+        document.content = extractElement(doc, xpathCtx, "//body");
+        document.url = url;
+        return document;
+    }   
+    catch(std::exception &ex){
+        std::cout << "Error: " << ex.what() << '\n';
     }
-    freeHtmlDocumentContextObject(doc, xpathCtx, xpathObj);
-    return title;
+    freeHtmlDocumentContextObject(doc, xpathCtx, nullptr);
+
+   
+
+}
+std::string HTMLParser::extractElement(htmlDocPtr doc,xmlXPathContextPtr xpathCtx,std::string xpathExpr)
+{
+   
+    std::string element{""};
+    xmlXPathObjectPtr xpathObj = nullptr;
+    try {
+        xpathObj = evaluateXPathExpression(xpathCtx, xpathExpr);
+
+        if (!xpathObj) {
+            return "";
+        }
+        
+        if (xpathObj && xpathObj->nodesetval && xpathObj->nodesetval->nodeNr > 0) {
+            element = (char*)xmlNodeGetContent(xpathObj->nodesetval->nodeTab[0]);
+        }
+        else {
+            std::cerr << "No matching element found for XPath: " << xpathExpr << std::endl;
+        }
+        
+
+    }
+    catch (std::exception& ex) {
+        std::cout << "Error: " << ex.what() << '\n';
+    }
+    return element;
+    freeHtmlDocumentContextObject(nullptr,nullptr,xpathObj);
+
 }
 
-std::string HTMLParser::extractContent(const std::string& htmlContext)
-{
-    htmlDocPtr doc = loadHtmlDocument(htmlContent);
-    std::string xpathExpr = "body";
-    xmlXPathContextPtr xpathCtx = createXPathContext(doc);
-    xmlXPathObjectPtr xpathObj = evaluateXPathExpression(xpathCtx, xpathExpr);
-    xmlNodeSetPtr nodes = xpathObj->nodesetval;
-    std::string content;
-    if (nodes->nodeNr > 0) {
-        content = (char*)xmlNodeGetContent(nodes->nodeTab[0]);
-    }
-    freeHtmlDocumentContextObject(doc, xpathCtx, xpathObj);
-    return content;
-}
 
 xmlDocPtr HTMLParser::loadHtmlDocument(const std::string& htmlContent) {
     xmlDocPtr doc = htmlReadMemory(htmlContent.c_str(), htmlContent.size(), nullptr, nullptr, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
@@ -70,11 +109,21 @@ xmlXPathContextPtr HTMLParser::createXPathContext(xmlDocPtr doc) {
 }
 
 xmlXPathObjectPtr HTMLParser::evaluateXPathExpression(xmlXPathContextPtr xpathCtx, const std::string& xpathExpr) {
-    xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression(reinterpret_cast<const xmlChar*>(xpathExpr.c_str()), xpathCtx);
-    if (xpathObj == nullptr) {
-        throw std::runtime_error("Failed to evaluate xPath expression.");
+    xmlXPathObjectPtr xpathObj = nullptr;
+    try {
+        xpathObj = xmlXPathEvalExpression(reinterpret_cast<const xmlChar*>(xpathExpr.c_str()), xpathCtx);
+        if (xpathObj == nullptr) {
+            throw std::runtime_error("Failed to evaluate xPath expression: " + xpathExpr);
+        }
+        return xpathObj;
     }
-    return xpathObj;
+    catch (std::exception& ex) {
+        std::cout << "Error: " << ex.what() << '\n';
+        if (xpathObj != nullptr) {
+            xmlXPathFreeObject(xpathObj);
+        }
+        return nullptr; 
+    }
 }
 
 std::vector<std::string> HTMLParser::extractLinks(const std::string& htmlContent) {
@@ -99,7 +148,35 @@ std::vector<std::string> HTMLParser::extractLinks(const std::string& htmlContent
 
 void HTMLParser::freeHtmlDocumentContextObject(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, xmlXPathObjectPtr xpathObject)
 {
-    xmlXPathFreeObject(xpathObject);
-    xmlXPathFreeContext(xpathCtx);
-    xmlFreeDoc(doc);
+    if(xpathObject) xmlXPathFreeObject(xpathObject);
+    if(xpathCtx)xmlXPathFreeContext(xpathCtx);
+    if(doc)xmlFreeDoc(doc);
 }
+
+const bson_t* HTMLParser::createBSONFromDocument(const documentStructure& doc) {
+    bson_t* bson=bson_new();
+
+    try {
+        bson_init(bson);
+
+        bson_append_utf8(bson, "url", -1, doc.url.c_str(), -1);
+        bson_append_utf8(bson, "title", -1, doc.title.c_str(), -1);
+        bson_append_utf8(bson, "description", -1, doc.description.c_str(), -1);
+        bson_append_utf8(bson, "keywords", -1, doc.keywords.c_str(), -1);
+        bson_append_utf8(bson, "author", -1, doc.author.c_str(), -1);
+        bson_append_utf8(bson, "publication_date", -1, doc.publication_date.c_str(), -1);
+        bson_append_utf8(bson, "last_modified_date", -1, doc.last_modification_date.c_str(), -1);
+        bson_append_utf8(bson, "content_type", -1, doc.content_type.c_str(), -1);
+        bson_append_utf8(bson, "tags", -1, doc.tags.c_str(), -1);
+        bson_append_utf8(bson, "image_links", -1, doc.image_links.c_str(), -1);
+        bson_append_utf8(bson, "content", -1, doc.content.c_str(), -1);
+        char* str = bson_as_json(bson, nullptr);
+        return bson;
+
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
+    }
+
+}
+
