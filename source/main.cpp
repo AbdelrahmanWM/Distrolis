@@ -1,6 +1,7 @@
 #include <iostream>
 #include "WebCrawler.h"
 #include "DataBase.h"
+#include "HTMLParser.h"
 
 int main(int argc, char*argv[])
 {
@@ -10,16 +11,11 @@ int main(int argc, char*argv[])
 		return EXIT_FAILURE;
 	}
 	const std::string connectionString = argv[1];
-	DataBase* db = DataBase::getInstance(connectionString);
-	bson_t* doc = BCON_NEW(
-		"name", BCON_UTF8("John Due"),
-		"age", BCON_INT32(30),
-		"email", BCON_UTF8("john.due@example.com")
-	);
-	db->insertDocument("test", doc);
+	const DataBase* db = DataBase::getInstance(connectionString);
+	
 	curl_global_init(CURL_GLOBAL_ALL);
-
-	WebCrawler webCrawler{ static_cast<std::string>("https://www.youtube.com/") ,2};
+	HTMLParser htmlParser{};
+	WebCrawler webCrawler{ static_cast<std::string>("https://www.bbc.com/news") ,10,db,htmlParser};
 	webCrawler.run();
 	curl_global_cleanup();
 }
