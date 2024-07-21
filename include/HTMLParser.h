@@ -24,22 +24,22 @@ public:
 	};
 	HTMLParser();
 	~HTMLParser();
-	void extractAndStorePageDetails(const std::string& htmlContent, const std::string& url, const DataBase*& db);
-	std::vector<std::string> extractLinksFromHTML(const std::string& htmlContent);
+	void extractAndStorePageDetails(const std::string& htmlContent, const std::string& url, const DataBase*& db) const;
+	std::vector<std::string> extractLinksFromHTML(const std::string& htmlContent) const;
 	
 	
 
 private:
 	
 	std::string htmlContent;
-	documentStructure extractElements(const::std::string& htmlContent, const std::string& url);
-	xmlDocPtr loadHtmlDocument(const std::string& htmlContent);
-	std::string extractElement(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, std::string xpathExpr);
-	xmlXPathContextPtr createXPathContext(xmlDocPtr doc);
-	xmlXPathObjectPtr evaluateXPathExpression(xmlXPathContextPtr xpathCtx, const std::string& xpathExpr);
-	std::vector<std::string> extractLinks(const std::string& htmlContent);
-	void freeHtmlDocumentContextObject(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, xmlXPathObjectPtr xpathObject);
-	const bson_t* createBSONFromDocument(const documentStructure& doc);
+	documentStructure extractElements(const::std::string& htmlContent, const std::string& url) const;
+	xmlDocPtr loadHtmlDocument(const std::string& htmlContent) const;
+	std::string extractElement(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, std::string xpathExpr)  const;
+	xmlXPathContextPtr createXPathContext(xmlDocPtr doc)  const;
+	xmlXPathObjectPtr evaluateXPathExpression(xmlXPathContextPtr xpathCtx, const std::string& xpathExpr) const;
+	std::vector<std::string> extractLinks(const std::string& htmlContent) const;
+	void freeHtmlDocumentContextObject(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, xmlXPathObjectPtr xpathObject)  const;
+	const bson_t* createBSONFromDocument(const documentStructure& doc) const;
 };
 
 

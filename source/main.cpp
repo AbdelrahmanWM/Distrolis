@@ -2,6 +2,7 @@
 #include "WebCrawler.h"
 #include "DataBase.h"
 #include "HTMLParser.h"
+#include "URLParser.h"
 
 int main(int argc, char*argv[])
 {
@@ -11,12 +12,15 @@ int main(int argc, char*argv[])
 		return EXIT_FAILURE;
 	}
 	const std::string connectionString = argv[1];
-	const DataBase* db = DataBase::getInstance(connectionString);
+	const DataBase* db = DataBase::getInstance(connectionString,"SearchEngine","pages");
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 	HTMLParser htmlParser{};
-	WebCrawler webCrawler{ static_cast<std::string>("https://www.bbc.com/news") ,10,db,htmlParser};
-	webCrawler.run();
+	std::string seed_url = "https://www.theodinproject.com/dashboard";
+	URLParser urlParser{seed_url};
+
+	WebCrawler webCrawler{ seed_url ,10,db,htmlParser,urlParser};
+	webCrawler.run(true);
 	curl_global_cleanup();
 }
 //CURL* curl;

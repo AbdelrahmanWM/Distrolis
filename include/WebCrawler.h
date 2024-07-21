@@ -7,23 +7,23 @@
 #include <iostream>
 #include <unordered_set>
 #include "HTMLParser.h"
+#include "URLParser.h"
 
 class WebCrawler {
 public:
-	WebCrawler(const std::string& seed_url, int max_pages,const DataBase*& database,HTMLParser& parser);
+	WebCrawler(const std::string& seed_url, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser);
 	~WebCrawler();
-	void run();
+	void run(bool clear = false);
 
 private: 
 	void parsePage(const std::string& htmlContent, const std::string& url);
 	std::string fetchPage(const std::string& url);
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-	static bool isAbsoluteURL(const std::string& url);
-	static bool shouldIgnoreURL(const std::string& url);
-	static std::string convertToAbsoluteURL(const std::string& url, const std::string& baseUrl);
+
 
 	const DataBase*& m_db;
-	HTMLParser& m_parser;
+	const HTMLParser& m_parser;
+	URLParser& m_urlPaser;
 	int m_max_pages_to_crawl;
 	std::queue<std::string> m_frontier;
 	std::unordered_set<std::string> m_crawled_pages;

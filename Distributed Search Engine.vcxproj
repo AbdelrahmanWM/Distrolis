@@ -153,11 +153,13 @@
   <ItemGroup>
     <ClCompile Include="source\DataBase.cpp" />
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\URLParser.cpp" />
     <ClCompile Include="source\WebCrawler.cpp" />
     <ClCompile Include="source\HTMLparser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\DataBase.h" />
+    <ClInclude Include="include\URLParser.h" />
     <ClInclude Include="include\WebCrawler.h" />
     <ClInclude Include="include\HTMLParser.h" />
   </ItemGroup>
