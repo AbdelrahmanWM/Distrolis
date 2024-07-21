@@ -7,15 +7,17 @@
 
 class DataBase {
 public:
-	static DataBase* getInstance(const std::string& connectionString);
+	static DataBase* getInstance(const std::string& connectionString, const std::string& database_name, const std::string& collection_name);
 	static void destroyInstance();
-	void insertDocument(const std::string& collectionName, const bson_t* document) const;
+	void insertDocument( const bson_t* document) const;
+	void clearCollection() const;
 
 private:
-	DataBase(const std::string& connectionString);
+	DataBase(const std::string& connectionString, const std::string& database_name, const std::string& collection_name);
 	~DataBase();
 	static DataBase* db;
-	mongoc_client_t*client;
-	mongoc_database_t* database;
+	const std::string m_database_name;
+	const std::string m_collection_name;
+	mongoc_client_t*m_client;
 };
 #endif
