@@ -79,10 +79,10 @@
     <LibraryPath>C:\cmder\vcpkg\installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;E:\CppModules\snowball-master\libstemmer_c-2.2.0\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\FullStackWebDevelopment\Projects\Distributed Search Engine\Distributed Search Engine\include;E:\CppModules\snowball-master\libstemmer_c-2.2.0\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -123,6 +123,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\mongo-c-driver-install\include\libmongoc-1.0;C:\mongo-c-driver-install\include\libbson-1.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,6 +141,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\mongo-c-driver-install\include\libmongoc-1.0;C:\mongo-c-driver-install\include\libbson-1.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="include\InvertedIndex.cpp" />
     <ClCompile Include="source\DataBase.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\URLParser.cpp" />
@@ -159,6 +162,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\DataBase.h" />
+    <ClInclude Include="include\InvertedIndex.h" />
+    <ClInclude Include="include\Posting.h" />
     <ClInclude Include="include\URLParser.h" />
     <ClInclude Include="include\WebCrawler.h" />
     <ClInclude Include="include\HTMLParser.h" />

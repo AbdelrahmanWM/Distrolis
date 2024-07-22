@@ -1,6 +1,4 @@
 #include "DataBase.h"
-#include <cstdlib>
-#include <iostream>
 
 DataBase* DataBase::db = nullptr;
 
@@ -50,7 +48,7 @@ void DataBase::destroyInstance() {
     db = nullptr;
 }
 
-void DataBase::insertDocument( const bson_t* document) const
+void DataBase::insertDocument( const bson_t* document, const std::string& collectionName) const
 {
     std::cout << *bson_as_json(document,nullptr)<<"\n";
     mongoc_collection_t* collection = nullptr;
@@ -82,6 +80,39 @@ void DataBase::insertDocument( const bson_t* document) const
     }
 }
 
+std::vector<bson_t*> DataBase::getAllDocuments() const
+{
+    std::vector<bson_t*> documents{};
+    mongoc_collection_t* collection=nullptr;
+    mongoc_cursor_t* cursor=nullptr;
+    try {
+        collection = mongoc_client_get_collection(m_client, m_database_name.c_str(), m_collection_name.c_str());
+        if (!collection) {
+            std::cerr << "Failed to get collection: " << m_collection_name << std::endl;
+            return {};
+        }
+        cursor = mongoc_collection_find_with_opts(collection, bson_new(), nullptr, nullptr);
+        if (!cursor) {
+            std::cerr << "Failed to get cursor to collection: " << m_collection_name << std::endl;
+            return {};
+        }
+
+        const bson_t* doc;
+        while (mongoc_cursor_next(cursor, &doc)) {
+            bson_t* copied_doc = bson_copy(doc);
+            documents.push_back(copied_doc);
+        }
+       
+    }
+    catch (std::exception& ex) {
+        std::cerr << "Exception: " << ex.what() << std::endl;
+    }
+    if(cursor!=nullptr)mongoc_cursor_destroy(cursor);
+    if(collection!=nullptr)mongoc_collection_destroy(collection);
+
+    return documents;
+}
+
 void DataBase::clearCollection() const
 {
     mongoc_collection_t* collection=nullptr;
@@ -105,6 +136,68 @@ void DataBase::clearCollection() const
     if (collection) {
         mongoc_collection_destroy(collection);
     }
+}
+
+void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vector<Posting>>& index) const
+{
+    bson_t* document = bson_new();
+    if (!document) {
+        std::cerr << "Failed to create BSON document." << std::endl;
+        return;
+    }
+
+    try {
+        for (const auto& [term, postings] : index) {
+            bson_t term_doc;
+            BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
+            int i = 0;
+            for (const auto& posting : postings) {
+                bson_t posting_doc;
+                BSON_APPEND_DOCUMENT_BEGIN(&term_doc, std::to_string(i++).c_str(), &posting_doc);
+                BSON_APPEND_UTF8(&posting_doc, "docId", posting.docId.c_str());
+                BSON_APPEND_INT32(&posting_doc, "count", posting.count);
+                bson_append_document_end(&term_doc, &posting_doc);
+            }
+            bson_append_array_end(document, &term_doc);
+        }
+        insertDocument(document, "Index");
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Exception: " << ex.what() << std::endl;
+    }
+
+    bson_destroy(document); 
+}
+
+
+std::string DataBase::extractContentFromIndexDocument(const bson_t* document)const
+{
+    std::vector<std::string>fields{ "title","description","content","keywords"};
+    std::string content = "";
+    bson_iter_t iter;
+
+    for (const auto& field : fields) {
+        if (bson_iter_init_find(&iter, document, field.c_str())) {
+            if (BSON_ITER_HOLDS_UTF8(&iter)) {
+                content = content +bson_iter_utf8(&iter, nullptr)+' ';
+            }
+        }
+    }
+
+    return content;
+}
+
+std::string DataBase::extractIndexFromIndexDocument(const bson_t* document) const
+{
+    std::string docId{};
+    bson_iter_t iter;
+
+        if (bson_iter_init_find(&iter, document, "_id")) {
+            if (BSON_ITER_HOLDS_UTF8(&iter)) {
+                docId=bson_iter_utf8(&iter, nullptr);
+            }
+        }
+    return docId;
 }
 
 

@@ -55,14 +55,14 @@ HTMLParser::documentStructure  HTMLParser::extractElements(const::std::string& h
         document.image_links = extractElement(doc, xpathCtx, "//img/@src");
         document.content = extractElement(doc, xpathCtx, "//body");
         document.url = url;
-        return document;
+        
     }   
     catch(std::exception &ex){
         std::cout << "Error: " << ex.what() << '\n';
         throw;
     }
     freeHtmlDocumentContextObject(doc, xpathCtx, nullptr);
-
+    return document;
    
 
 }
@@ -91,8 +91,9 @@ std::string HTMLParser::extractElement(htmlDocPtr doc,xmlXPathContextPtr xpathCt
         std::cout << "Error: " << ex.what() << '\n';
         throw;
     }
+    freeHtmlDocumentContextObject(nullptr, nullptr, xpathObj);
     return element;
-    freeHtmlDocumentContextObject(nullptr,nullptr,xpathObj);
+   
 
 }
 

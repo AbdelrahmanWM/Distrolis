@@ -3,6 +3,7 @@
 #include "DataBase.h"
 #include "HTMLParser.h"
 #include "URLParser.h"
+#include "InvertedIndex.h"
 
 int main(int argc, char*argv[])
 {
@@ -16,11 +17,15 @@ int main(int argc, char*argv[])
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 	HTMLParser htmlParser{};
-	std::string seed_url = "https://www.theodinproject.com/dashboard";
+	std::string seed_url = "https://github.com";
 	URLParser urlParser{seed_url};
 
 	WebCrawler webCrawler{ seed_url ,10,db,htmlParser,urlParser};
 	webCrawler.run(true);
+
+	InvertedIndex invertedIndex{ db };
+	invertedIndex.run();
+
 	curl_global_cleanup();
 }
 //CURL* curl;
