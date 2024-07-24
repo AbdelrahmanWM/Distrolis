@@ -11,7 +11,7 @@
 
 class WebCrawler {
 public:
-	WebCrawler(const std::string& seed_url, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser);
+	WebCrawler(const std::string& seed_url, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name);
 	~WebCrawler();
 	void run(bool clear = false);
 
@@ -28,6 +28,8 @@ private:
 	std::queue<std::string> m_frontier;
 	std::unordered_set<std::string> m_crawled_pages;
 	std::unordered_set<size_t> m_visitedUrls;
+	const std::string m_database_name;
+	const std::string m_collection_name; 
 	
 
 };

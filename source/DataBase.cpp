@@ -2,8 +2,7 @@
 
 DataBase *DataBase::db = nullptr;
 
-DataBase::DataBase(const std::string &connectionString, const std::string &database_name, const std::string &collection_name)
-    : m_database_name(database_name), m_collection_name(collection_name)
+DataBase::DataBase(const std::string &connectionString)
 {
     mongoc_init();
 
@@ -40,11 +39,11 @@ DataBase::~DataBase()
     mongoc_cleanup();
 }
 
-DataBase *DataBase::getInstance(const std::string &connectionString, const std::string &database_name, const std::string &collection_name)
+DataBase *DataBase::getInstance(const std::string &connectionString)
 {
     if (!db)
     {
-        db = new DataBase(connectionString, database_name, collection_name);
+        db = new DataBase(connectionString);
     }
     return db;
 }
@@ -55,7 +54,7 @@ void DataBase::destroyInstance()
     db = nullptr;
 }
 
-void DataBase::insertDocument(const bson_t *document, const std::string &collectionName) const
+void DataBase::insertDocument(const bson_t *document,const std::string& database_name, const std::string &collection_name) const
 {
     std::cout << document << "\n";
     mongoc_collection_t *collection = nullptr;
@@ -63,10 +62,10 @@ void DataBase::insertDocument(const bson_t *document, const std::string &collect
     bool insertSuccess = false;
     try
     {
-        collection = mongoc_client_get_collection(m_client, "SearchEngine", m_collection_name.c_str());
+        collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
         if (!collection)
         {
-            std::cerr << "Failed to get collection: " << m_collection_name << std::endl;
+            std::cerr << "Failed to get collection: " << collection_name << std::endl;
             return;
         }
 
@@ -93,23 +92,23 @@ void DataBase::insertDocument(const bson_t *document, const std::string &collect
     }
 }
 
-std::vector<bson_t> DataBase::getAllDocuments() const
+std::vector<bson_t> DataBase::getAllDocuments(const std::string& database_name, const std::string& collection_name) const
 {
     std::vector<bson_t> documents{};
     mongoc_collection_t *collection = nullptr;
     mongoc_cursor_t *cursor = nullptr;
     try
     {
-        collection = mongoc_client_get_collection(m_client, m_database_name.c_str(), m_collection_name.c_str());
+        collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
         if (!collection)
         {
-            std::cerr << "Failed to get collection: " << m_collection_name << std::endl;
+            std::cerr << "Failed to get collection: " << collection_name << std::endl;
             return {};
         }
         cursor = mongoc_collection_find_with_opts(collection, bson_new(), nullptr, nullptr);
         if (!cursor)
         {
-            std::cerr << "Failed to get cursor to collection: " << m_collection_name << std::endl;
+            std::cerr << "Failed to get cursor to collection: " << collection_name << std::endl;
             return {};
         }
 
@@ -132,12 +131,12 @@ std::vector<bson_t> DataBase::getAllDocuments() const
     return documents;
 }
 
-void DataBase::clearCollection() const
+void DataBase::clearCollection(const std::string& database_name, const std::string collection_name) const
 {
     mongoc_collection_t *collection = nullptr;
     try
     {
-        collection = mongoc_client_get_collection(m_client, m_database_name.c_str(), m_collection_name.c_str());
+        collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
         if (!collection)
         {
             throw std::runtime_error("Failed to get collection.");
@@ -162,7 +161,7 @@ void DataBase::clearCollection() const
     }
 }
 
-void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vector<Posting>> &index) const
+void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vector<Posting>> &index, const std::string&database_name,const std::string collection_name) const
 {
     std::cout << "are we here?\n";
     bson_t *document = bson_new();
@@ -175,8 +174,7 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vect
     try
     {
         for (const auto &[term, postings] : index)
-        {
-            std::cout << "TERM " << term << '\n';
+        {  
             bson_t term_doc;
             BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
             int i = 0;
@@ -193,7 +191,7 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vect
             }
             bson_append_array_end(document, &term_doc);
         }
-        insertDocument(document, "Index");
+        insertDocument(document, database_name,collection_name);
     }
     catch (const std::exception &ex)
     {

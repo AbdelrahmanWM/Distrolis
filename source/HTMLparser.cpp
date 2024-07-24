@@ -9,14 +9,14 @@ HTMLParser::~HTMLParser()
 {
     xmlCleanupParser();
 }
-void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, const DataBase *&db) const
+void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, const DataBase *&db,const std::string&database_name, const std::string& collection_name) const
 {
 
     try
     {
         documentStructure document = extractElements(htmlContent, url);
 
-        db->insertDocument(createBSONFromDocument(document));
+        db->insertDocument(createBSONFromDocument(document),database_name,collection_name);
     }
     catch (std::runtime_error &ex)
     {
