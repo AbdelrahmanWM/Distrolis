@@ -10,21 +10,20 @@
 #include "libstemmer.h"
 #include "Posting.h"
 
-
-class InvertedIndex {
+class InvertedIndex
+{
 public:
-    
-    InvertedIndex(const DataBase*& db);
+    InvertedIndex(const DataBase *&db);
     void run();
-    void addDocument(const std::string docId, std::string& content);
+    void addDocument(const std::string docId, std::string &content);
 
 private:
     std::unordered_map<std::string, std::vector<Posting>> m_index;
-    const DataBase*& m_db;
-    std::vector<std::string> tokenize(std::string& content);
-    std::string normalize(std::string& token);
-    std::string stem(std::string& word);
-    bool isStopWord(std::string& word);
+    const DataBase *&m_db;
+    std::vector<std::string> tokenize(std::string &content);
+    std::string normalize(std::string &token);
+    std::string stem(std::string &word);
+    bool isStopWord(std::string &word);
 };
 
-#endif 
+#endif
