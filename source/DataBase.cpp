@@ -161,7 +161,7 @@ void DataBase::clearCollection(const std::string& database_name, const std::stri
     }
 }
 
-void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vector<Posting>> &index, const std::string&database_name,const std::string collection_name) const
+void DataBase::saveInvertedIndex(const std::unordered_map<std::string,  std::unordered_map<std::string,int>> &index, const std::string&database_name,const std::string collection_name) const
 {
     std::cout << "are we here?\n";
     bson_t *document = bson_new();
@@ -173,20 +173,20 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::vect
 
     try
     {
-        for (const auto &[term, postings] : index)
+        for (const auto &[term, map] : index)
         {  
             bson_t term_doc;
             BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
             int i = 0;
-            for (const auto &posting : postings)
+            for (const auto &[docId, count] : map)
             {
 
                 bson_t posting_doc;
                 std::string key = std::to_string(i++);
                 BSON_APPEND_DOCUMENT_BEGIN(&term_doc, key.c_str(), &posting_doc);
 
-                BSON_APPEND_UTF8(&posting_doc, "docId", posting.docId.c_str());
-                BSON_APPEND_INT32(&posting_doc, "count", posting.count);
+                BSON_APPEND_UTF8(&posting_doc, "docId", docId.c_str());
+                BSON_APPEND_INT32(&posting_doc, "count", count);
                 bson_append_document_end(&term_doc, &posting_doc);
             }
             bson_append_array_end(document, &term_doc);

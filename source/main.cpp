@@ -8,7 +8,7 @@
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
-static const int NUMBER_OF_PAGES = 3;
+static const int NUMBER_OF_PAGES = 300;
 
 int main(int argc, char*argv[])
 {

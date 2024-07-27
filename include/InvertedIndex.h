@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include "DataBase.h"
 #include "libstemmer.h"
-#include "Posting.h"
+
 
 class InvertedIndex
 {
@@ -18,7 +18,7 @@ public:
     void addDocument(const std::string docId, std::string &content);
 
 private:
-    std::unordered_map<std::string, std::vector<Posting>> m_index;
+    std::unordered_map<std::string, std::unordered_map<std::string,int>> m_index;
     const DataBase *&m_db;
     const std::string m_database_name;
     const std::string m_collection_name;

@@ -40,8 +40,8 @@ void InvertedIndex::addDocument(const std::string docId, std::string &content)
         if (isStopWord(token))
             continue;
         token = stem(token);
-        std::cout<<"* "<<token<<"\n";
-        m_index[token].push_back({docId, 1});
+        if(m_index[token][docId])m_index[token][docId]++;
+        else m_index[token][docId]=1;
     }
 }
 
