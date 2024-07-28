@@ -23,6 +23,9 @@ void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, cons
         throw;
     }
 }
+const bson_t * HTMLParser::getPageDocument(const std::string &htmlContent, const std::string &url) const{
+    return createBSONFromDocument(extractElements(htmlContent,url));
+}
 std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string &htmlContent) const
 {
     std::vector<std::string> links{};
@@ -44,6 +47,7 @@ HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &h
     try
     {
         doc = loadHtmlDocument(htmlContent);
+        if(doc!=nullptr){
         xpathCtx = createXPathContext(doc);
         document.title = extractElement(doc, xpathCtx, "//title");
         document.description = extractElement(doc, xpathCtx, "//meta[@name='description']/@content");
@@ -55,8 +59,9 @@ HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &h
         document.content_type = extractElement(doc, xpathCtx, "//meta[@name='content-type']/@content");
         document.tags = extractElement(doc, xpathCtx, "//meta[@name='tags']/@content");
         document.image_links = extractElement(doc, xpathCtx, "//img/@src");
-        document.content = extractElement(doc, xpathCtx, "//body");
+        document.content = extractText(doc);
         document.url = url;
+        }
     }
     catch (std::exception &ex)
     {
@@ -66,7 +71,7 @@ HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &h
     freeHtmlDocumentContextObject(doc, xpathCtx, nullptr);
     return document;
 }
-std::string HTMLParser::extractElement(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, std::string xpathExpr) const
+std::string HTMLParser::extractElement(const htmlDocPtr& doc, const xmlXPathContextPtr& xpathCtx, const std::string& xpathExpr) const
 {
 
     std::string element{""};
@@ -97,19 +102,41 @@ std::string HTMLParser::extractElement(htmlDocPtr doc, xmlXPathContextPtr xpathC
     freeHtmlDocumentContextObject(nullptr, nullptr, xpathObj);
     return element;
 }
+void HTMLParser::extractTextNodes(xmlNodePtr node, std::string &output) const{
+    for (xmlNode *cur = node; cur; cur = cur->next) {
+        if (cur->type == XML_TEXT_NODE) {
+            output += (const char*)cur->content;
+        }
+        extractTextNodes(cur->children, output);
+    }
+}
+std::string HTMLParser::extractText(const htmlDocPtr& doc)const{
+    std::cout<<"Extract text\n";
+    if(!doc){
+        std::cerr<<"Failed to parse HTML\n";
+        return "";
+    }
+    xmlNodePtr root = xmlDocGetRootElement(doc);
+    std::string textContent;
+    extractTextNodes(root,textContent);
+    std::cout<<"Extract text done\n";
 
+    return textContent;
+
+}
 xmlDocPtr HTMLParser::loadHtmlDocument(const std::string &htmlContent) const
 {
+
     xmlDocPtr doc = htmlReadMemory(htmlContent.c_str(), htmlContent.size(), nullptr, nullptr, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
 
     if (doc == nullptr)
     {
-        throw std::runtime_error("Failed to parse HTML document.");
+        std::cerr<<"Failed to parse HTML document.\n";
     }
     return doc;
 }
 
-xmlXPathContextPtr HTMLParser::createXPathContext(xmlDocPtr doc) const
+xmlXPathContextPtr HTMLParser::createXPathContext(const xmlDocPtr& doc) const
 {
     xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
     if (xpathCtx == nullptr)
@@ -119,7 +146,7 @@ xmlXPathContextPtr HTMLParser::createXPathContext(xmlDocPtr doc) const
     return xpathCtx;
 }
 
-xmlXPathObjectPtr HTMLParser::evaluateXPathExpression(xmlXPathContextPtr xpathCtx, const std::string &xpathExpr) const
+xmlXPathObjectPtr HTMLParser::evaluateXPathExpression(const xmlXPathContextPtr& xpathCtx, const std::string &xpathExpr) const
 {
     xmlXPathObjectPtr xpathObj = nullptr;
     try
@@ -146,6 +173,7 @@ std::vector<std::string> HTMLParser::extractLinks(const std::string &htmlContent
 {
     std::vector<std::string> links;
     xmlDocPtr doc = loadHtmlDocument(htmlContent);
+    if(doc==nullptr)return {};
     xmlXPathContextPtr xpathCtx = createXPathContext(doc);
     std::string xpathEpxr = "//a[@href]";
     xmlXPathObjectPtr xpathObj = evaluateXPathExpression(xpathCtx, xpathEpxr);
@@ -165,7 +193,7 @@ std::vector<std::string> HTMLParser::extractLinks(const std::string &htmlContent
     return links;
 }
 
-void HTMLParser::freeHtmlDocumentContextObject(htmlDocPtr doc, xmlXPathContextPtr xpathCtx, xmlXPathObjectPtr xpathObject) const
+void HTMLParser::freeHtmlDocumentContextObject(const htmlDocPtr& doc, const xmlXPathContextPtr& xpathCtx, const xmlXPathObjectPtr& xpathObject) const
 {
     if (xpathObject)
         xmlXPathFreeObject(xpathObject);
@@ -178,7 +206,7 @@ void HTMLParser::freeHtmlDocumentContextObject(htmlDocPtr doc, xmlXPathContextPt
 const bson_t *HTMLParser::createBSONFromDocument(const documentStructure &doc) const
 {
     bson_t *bson = bson_new();
-
+    
     try
     {
         bson_init(bson);
