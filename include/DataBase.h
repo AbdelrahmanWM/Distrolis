@@ -15,6 +15,7 @@ public:
     static void destroyInstance();
 
     void insertDocument(const bson_t *document,const std::string& database_name, const std::string &collection_name) const;
+    void insertManyDocuments(std::vector<const bson_t *>documents,const std::string& database_name, const std::string &collection_name) const;
     std::vector<bson_t> getAllDocuments(const std::string& database_name, const std::string& collection_name) const;
     void clearCollection(const std::string& database_name, const std::string collection_name) const;
     void saveInvertedIndex(const std::unordered_map<std::string,  std::unordered_map<std::string,int>> &index, const std::string&database_name,const std::string collection_name) const;

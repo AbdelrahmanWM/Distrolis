@@ -91,7 +91,43 @@ void DataBase::insertDocument(const bson_t *document,const std::string& database
         mongoc_collection_destroy(collection);
     }
 }
+void DataBase::insertManyDocuments(std::vector<const bson_t *>documents,const std::string& database_name, const std::string &collection_name) const
+{
 
+    mongoc_collection_t *collection = nullptr;
+    bson_error_t error;
+    bool insertSuccess = false;
+    try
+    {
+        collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
+        if (!collection)
+        {
+            std::cerr << "Failed to get collection: " << collection_name << std::endl;
+            return;
+        }
+
+        std::cout << "Collection obtained successfully." << std::endl;
+
+        insertSuccess = mongoc_collection_insert_many(collection, documents.data(),documents.size(), nullptr, nullptr, &error);
+        if (!insertSuccess)
+        {
+            std::cerr << "Failed to insert documents: " << error.message << std::endl;
+        }
+        else
+        {
+            std::cout << "Documents inserted successfully." << std::endl;
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << "Exception: " << ex.what() << std::endl;
+    }
+
+    if (collection)
+    {
+        mongoc_collection_destroy(collection);
+    }
+}
 std::vector<bson_t> DataBase::getAllDocuments(const std::string& database_name, const std::string& collection_name) const
 {
     std::vector<bson_t> documents{};
