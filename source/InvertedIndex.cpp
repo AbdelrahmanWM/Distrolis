@@ -32,16 +32,19 @@ void InvertedIndex::run(bool clear)
 }
 
 void InvertedIndex::addDocument(const std::string docId, std::string &content)
-{
+{   
     std::vector<std::string> tokens = tokenize(content);
     for (std::string token : tokens)
     {
         token = normalize(token);
+        
         if (isStopWord(token))
             continue;
         token = stem(token);
+        if(isValidWord(token)){
         if(m_index[token][docId])m_index[token][docId]++;
         else m_index[token][docId]=1;
+        }
     }
 }
 
@@ -52,12 +55,14 @@ std::vector<std::string> InvertedIndex::tokenize(std::string &content)
     std::vector<std::string> tokens;
     while (stream >> token)
     {
-        if(token.size()>3&&token.size()<=20)// Temporary filtration step until better solution is found
+        if(isValidWord(token))// Temporary filtration step until better solution is found
         tokens.push_back(token);
     }
     return tokens;
 }
-
+bool InvertedIndex::isValidWord(std::string word){
+    return word.size()>3&&word.size()<=20;
+}
 std::string InvertedIndex::normalize(std::string &token)
 {
     std::string normalized;

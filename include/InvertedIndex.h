@@ -24,6 +24,7 @@ private:
     const std::string m_collection_name;
     const std::string m_documents_collection_name;
     std::vector<std::string> tokenize(std::string &content);
+    bool isValidWord(std::string word);
     std::string normalize(std::string &token);
     std::string stem(std::string &word);
     bool isStopWord(std::string &word);
