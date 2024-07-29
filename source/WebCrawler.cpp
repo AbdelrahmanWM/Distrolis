@@ -1,8 +1,8 @@
 #include "WebCrawler.h"
 
 
-WebCrawler::WebCrawler(const std::string& seed_url, int max_pages_to_crawl, const DataBase*& database, const HTMLParser& parser, URLParser& urlParser,const std::string& database_name, const std::string& collection_name)
-	: m_db(database), m_parser(parser),m_urlPaser(urlParser),m_max_pages_to_crawl(max_pages_to_crawl),m_frontier({seed_url}),m_crawled_pages{}, m_visitedUrls{},m_database_name{database_name},m_collection_name{collection_name}
+WebCrawler::WebCrawler(const std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name)
+	: m_db(database), m_parser(parser),m_urlParser(urlParser),m_max_pages_to_crawl(max_pages),m_frontier(seed_urls),m_crawled_pages{}, m_visitedUrls{},m_database_name{database_name},m_collection_name{collection_name}
 {
 	
 }
@@ -36,10 +36,10 @@ void WebCrawler::parsePage(const std::string& htmlContent,const std::string& url
 	std::hash<std::string> hasher;
 	std::string absoluteUrl{};
 	
-	m_urlPaser.setBaseURL(url);
+	m_urlParser.setBaseURL(url);
 	for (const auto& link : links) {
 		
-		absoluteUrl = m_urlPaser.convertToAbsoluteURL(link);
+		absoluteUrl = m_urlParser.convertToAbsoluteURL(link);
 		size_t urlHash = hasher(absoluteUrl);
 		if (m_visitedUrls.find(urlHash) != m_visitedUrls.end()) {
 			continue;

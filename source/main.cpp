@@ -3,13 +3,25 @@
 #include "DataBase.h"
 #include "HTMLParser.h"
 #include "URLParser.h"
+#include <queue>
 #include "InvertedIndex.h"
 
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
 static const int NUMBER_OF_PAGES = 10;
-
+static std::queue<std::string>seed_urls({
+	"https://www.bbc.com/",
+    "https://www.cnn.com/",
+    "https://techcrunch.com/",
+    "https://www.wired.com/",
+    "https://www.nytimes.com/",
+    "https://arstechnica.com/",
+    "https://www.khanacademy.org/",
+    "https://www.coursera.org/",
+    "https://stackoverflow.com/",
+    "https://www.reddit.com/"
+});
 int main(int argc, char*argv[])
 {
 	if (argc < 2) {
@@ -22,10 +34,10 @@ int main(int argc, char*argv[])
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 	HTMLParser htmlParser{};
-	std::string seed_url = "https://www.bbc.com/";
-	URLParser urlParser{seed_url};
-
-	WebCrawler webCrawler{ seed_url ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION};
+	std::string seed_url = "https://www.bbc.com/"; //temp
+	URLParser urlParser{seed_url};//temp
+    std::queue<std::string> seed_url_queue ({seed_url});//temp
+	WebCrawler webCrawler{ seed_urls ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION};
 	webCrawler.run(true);
 
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION};
