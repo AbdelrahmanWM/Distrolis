@@ -1,10 +1,14 @@
 #include "WebCrawler.h"
 
 
-WebCrawler::WebCrawler(const std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name)
-	: m_db(database), m_parser(parser),m_urlParser(urlParser),m_max_pages_to_crawl(max_pages),m_frontier(seed_urls),m_crawled_pages{}, m_visitedUrls{},m_database_name{database_name},m_collection_name{collection_name}
+WebCrawler::WebCrawler(std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name)
+	: m_db(database), m_parser(parser),m_urlParser(urlParser),m_max_pages_to_crawl(max_pages),m_frontier(),m_crawled_pages{}, m_visitedUrls{},m_database_name{database_name},m_collection_name{collection_name}
 {
-	
+	while(!seed_urls.empty())
+	{
+		m_frontier.push(m_urlParser.normalizeURL(seed_urls.front()));
+	    seed_urls.pop();
+	}
 }
 
 WebCrawler::~WebCrawler() {
@@ -16,6 +20,15 @@ void WebCrawler::run(bool clear) {
 
 	while (!m_frontier.empty() && m_crawled_pages.size() < static_cast<size_t>(m_max_pages_to_crawl)) {
 		const std::string& url = m_frontier.front();
+		m_urlParser.setBaseURL(url);
+		if(isURLVisited(url)){ // if already visited
+			m_frontier.pop();
+			continue;
+		}
+		if(m_urlParser.isDomainURL()){
+			fetchRobotsTxtContent();
+		}
+
 		std::string htmlContent = fetchPage(url);
 		parsePage(htmlContent,url);
 		m_frontier.pop();
@@ -33,21 +46,19 @@ void WebCrawler::parsePage(const std::string& htmlContent,const std::string& url
 	catch (std::runtime_error& ex) {
 		std::cout << "Error: " << ex.what() << '\n';
 	}
-	std::hash<std::string> hasher;
 	std::string absoluteUrl{};
 	
-	m_urlParser.setBaseURL(url);
+	
 	for (const auto& link : links) {
 		
 		absoluteUrl = m_urlParser.convertToAbsoluteURL(link);
-		size_t urlHash = hasher(absoluteUrl);
-		if (m_visitedUrls.find(urlHash) != m_visitedUrls.end()) {
+		if (isURLVisited(absoluteUrl)) {
 			continue;
 		}
 		std::cout << "Link: " << absoluteUrl << '\n';
-		m_visitedUrls.insert(urlHash);
 		m_frontier.push(absoluteUrl);
 	}
+	markURLAsVisited(url);
 	m_crawled_pages.push_back(m_parser.getPageDocument(htmlContent,url));
 	
 }
@@ -79,4 +90,25 @@ size_t WebCrawler::WriteCallback(void* contents, size_t size, size_t nmemb, void
 	return size * nmemb;
 }
 
+void WebCrawler::fetchRobotsTxtContent(){
+	std::string content = fetchPage(m_urlParser.getRobotsTxtURL());
+	std::vector<std::string>links {m_parser.extractRobotsTxtLinks(content)};
+	std::string absoluteURL{};
+	for(const auto& link : links){
+		absoluteURL = m_urlParser.convertToAbsoluteURL(link);
+		markURLAsVisited(absoluteURL);
+	}
 
+}
+
+bool WebCrawler::isURLVisited(const std::string &absoluteURL)
+{
+	std::hash<std::string> hasher{};
+    return m_visitedUrls.find(hasher(absoluteURL)) != m_visitedUrls.end();
+}
+
+void WebCrawler::markURLAsVisited(const std::string &absoluteURL)
+{
+	std::hash<std::string> hasher{};
+	m_visitedUrls.insert(hasher(absoluteURL));
+}

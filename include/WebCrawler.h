@@ -11,16 +11,17 @@
 
 class WebCrawler {
 public:
-	WebCrawler(const std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name);
+	WebCrawler(std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name);
 	~WebCrawler();
 	void run(bool clear = false);
 
 private: 
 	void parsePage(const std::string& htmlContent, const std::string& url);
-	std::string fetchPage(const std::string& url);
+	static std::string fetchPage(const std::string& url);
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-
-
+    void fetchRobotsTxtContent();
+    bool isURLVisited(const std::string& absoluteURL);
+	void markURLAsVisited(const std::string& absoluteURL);
 	const DataBase*& m_db;
 	const HTMLParser& m_parser;
 	URLParser& m_urlParser;
@@ -30,6 +31,7 @@ private:
 	std::unordered_set<size_t> m_visitedUrls;
 	const std::string m_database_name;
 	const std::string m_collection_name; 
+
 	
 
 };
