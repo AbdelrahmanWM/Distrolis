@@ -8,6 +8,10 @@ public:
 	URLParser(const std::string& baseURL);
 	std::string convertToAbsoluteURL(const std::string& url);
 	void setBaseURL(const std::string& baseURL);
+	bool isDomainURL()const;
+	std::string getRobotsTxtURL()const;
+	static std::string normalizeURL(const std::string& url);
+
 private:
 	std::string m_baseURL;
 

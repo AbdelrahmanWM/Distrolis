@@ -22,6 +22,22 @@ bool URLParser::shouldIgnoreURL(const std::string& url) {
     return url.empty() || url == "/" || url[0] == '#';
 }
 
+std::string URLParser::normalizeURL(const std::string &url)
+{
+    std::string normalizeURL {url};
+    char lastChar = normalizeURL.back();
+    while(lastChar=='*'||lastChar=='$'||lastChar=='/'||lastChar=='?'){
+        
+        normalizeURL.pop_back();
+        lastChar = normalizeURL.back();
+    }
+    size_t index = normalizeURL.find("/*");
+    if(index!=std::string::npos){
+        normalizeURL = normalizeURL.substr(0,index);
+    }
+    return normalizeURL;
+}
+
 std::string URLParser::resolveProtocolRelativeURL(const std::string& url) {
     std::regex regex{ "^(http:|https:)" };
     std::smatch match;
@@ -54,22 +70,25 @@ std::string URLParser::resolvePathRelativeURL(const std::string& url) {
 }
 
 std::string URLParser::convertToAbsoluteURL(const std::string& url) {
+    std::string result{};
     if (shouldIgnoreURL(url)) {
-        return m_baseURL;
+        result = m_baseURL;
     }
 
-    if (isAbsoluteURL(url)) {
-        return url;
+    else if (isAbsoluteURL(url)) {
+        result = url;
     }
     else if (isProtocolRelativeURL(url)) {
-        return resolveProtocolRelativeURL(url);
+        result = resolveProtocolRelativeURL(url);
     }
     else if (isRootRelativeURL(url)) {
-        return resolveRootRelativeURL(url);
+        result = resolveRootRelativeURL(url);
     }
     else {
-        return resolvePathRelativeURL(url);
+        result = resolvePathRelativeURL(url);
     }
+    return normalizeURL(result);
+
 }
 
 void URLParser::setBaseURL(const std::string& baseURL) {
@@ -77,4 +96,18 @@ void URLParser::setBaseURL(const std::string& baseURL) {
         throw std::invalid_argument("Base URL cannot be empty");
     }
     m_baseURL = baseURL;
+}
+
+bool URLParser::isDomainURL() const
+{
+    std::regex domainRegex {R"(^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\/?$)"};
+    std::smatch match;
+    return std::regex_match(m_baseURL,domainRegex);
+}
+
+std::string URLParser::getRobotsTxtURL() const
+{
+
+    if(m_baseURL[m_baseURL.length()-1]=='/')return m_baseURL+"robots.txt";
+    else return m_baseURL+"/robots.txt";
 }
