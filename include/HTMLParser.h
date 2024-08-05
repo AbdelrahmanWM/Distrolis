@@ -27,7 +27,7 @@ public:
 	const bson_t * getPageDocument(const std::string &htmlContent, const std::string &url) const;
 	void extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, const DataBase *&db,const std::string&database_name, const std::string& collection_name) const;
 	std::vector<std::string> extractLinksFromHTML(const std::string& htmlContent) const;
-	
+	std::vector<std::string> extractRobotsTxtLinks(const std::string& robotsTxt)const;
 	
 
 private:

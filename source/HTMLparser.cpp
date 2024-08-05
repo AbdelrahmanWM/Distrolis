@@ -39,6 +39,35 @@ std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string &htm
     }
     return links;
 }
+std::vector<std::string> HTMLParser::extractRobotsTxtLinks(const std::string & robotsTxt) const
+{
+    std::vector<std::string> urls{};
+    size_t startIndex = robotsTxt.find("User-agent: *");
+    size_t endIndex = robotsTxt.find("User-agent:",startIndex+1);
+
+    std::string url{};
+    size_t urlStartIndex{};
+    size_t urlEndIndex{};
+    while (startIndex!=endIndex){
+        urlStartIndex = robotsTxt.find("Disallow: ",startIndex);
+        if(urlStartIndex<endIndex){
+            url="";
+            urlStartIndex+=10;
+            urlEndIndex = robotsTxt.find("\n",urlStartIndex);
+            
+            url=robotsTxt.substr(urlStartIndex,urlEndIndex - urlStartIndex);
+            urls.push_back(url);
+            startIndex = urlEndIndex+1;
+        }
+        else break;
+    }
+
+
+
+    
+    return urls;
+}
+
 HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &htmlContent, const std::string &url) const
 {
     documentStructure document{};
