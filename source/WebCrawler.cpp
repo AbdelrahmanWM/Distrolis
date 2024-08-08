@@ -65,7 +65,6 @@ void WebCrawler::parsePage(const std::string& htmlContent,const std::string& url
 std::string WebCrawler::fetchPage(const std::string& url) {
 	std::cout << "URL: " << url << '\n';
 	// Checking for url existence for duplication.
-
 	// Fetching the url
 	CURL* curl;
 	CURLcode res;
@@ -77,6 +76,7 @@ std::string WebCrawler::fetchPage(const std::string& url) {
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); Debug mode!
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, getRandomUserAgent().c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
@@ -99,6 +99,16 @@ void WebCrawler::fetchRobotsTxtContent(){
 		markURLAsVisited(absoluteURL);
 	}
 
+}
+
+std::string WebCrawler::getRandomUserAgent()
+{
+    static std::vector<std::string> userAgents = {
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.43"
+    };
+    return userAgents[rand()%userAgents.size()];
 }
 
 bool WebCrawler::isURLVisited(const std::string &absoluteURL)

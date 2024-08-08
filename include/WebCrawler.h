@@ -19,7 +19,9 @@ private:
 	void parsePage(const std::string& htmlContent, const std::string& url);
 	static std::string fetchPage(const std::string& url);
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-    void fetchRobotsTxtContent();
+    static std::string getRandomUserAgent();
+
+	void fetchRobotsTxtContent();
     bool isURLVisited(const std::string& absoluteURL);
 	void markURLAsVisited(const std::string& absoluteURL);
 	const DataBase*& m_db;

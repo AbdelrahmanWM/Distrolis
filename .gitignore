@@ -1,13 +1,3 @@
-# Visual Studio
-.vs/
-*.vcxproj.user
-*.vcxproj.filters
-Debug/
-Release/
-*.pdb
-*.ilk
-*.log
-
 # C++ specific
 *.obj
 *.o
@@ -34,14 +24,6 @@ build/
 .env
 notes.txt
 
-# Visual Studio
-.vs/
-*.vcxproj
-*.vcxproj.filters
-*.sln
-*.user
-*.vcxproj.user
-*.ipch/
-*.suo
+# Visual Studio Code
 
 .vscode
