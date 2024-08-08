@@ -2,12 +2,12 @@
 
 std::vector<std::string> WebCrawler::proxiesList;
 
-WebCrawler::WebCrawler(std::queue<std::string> &seed_urls, int max_pages, const DataBase *&database, const HTMLParser &parser, URLParser &urlParser, const std::string &database_name, const std::string &collection_name,const bool useProxy,const std::string& proxyAPIUrl)
+WebCrawler::WebCrawler(std::queue<std::string> &seed_urls, int max_pages, const DataBase *&database, const HTMLParser &parser, URLParser &urlParser, const std::string &database_name, const std::string &collection_name, const bool useProxy, const std::string &proxyAPIUrl)
 	: m_db(database), m_parser(parser), m_urlParser(urlParser), m_max_pages_to_crawl(max_pages), m_frontier(), m_crawled_pages{}, m_visitedUrls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_useProxy(useProxy)
 {
-	
 
-    if(useProxy)fetchProxies(proxyAPIUrl);
+	if (useProxy)
+		fetchProxies(proxyAPIUrl);
 	while (!seed_urls.empty())
 	{
 		m_frontier.push(m_urlParser.normalizeURL(seed_urls.front()));
@@ -38,7 +38,7 @@ void WebCrawler::run(bool clear)
 			fetchRobotsTxtContent();
 		}
 
-		std::string htmlContent = fetchPage(url,m_useProxy);
+		std::string htmlContent = fetchPage(url, m_useProxy);
 		parsePage(htmlContent, url);
 		m_frontier.pop();
 		std::cout << "m_frontier: " << m_frontier.size() << '\n';
@@ -91,37 +91,36 @@ std::string WebCrawler::fetchPage(const std::string &url, bool useProxy)
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, getRandomUserAgent().c_str());
-	 curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L); 
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-	if (useProxy)
+	res = curl_easy_perform(curl);
+	if (res != CURLE_OK)
 	{
-		bool proxySuccess = false;
-		const int maxRetries = 5;
-		for(int i=0;i<maxRetries;++i)
+		std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+
+		if (useProxy)
 		{
-			std::string proxy = getRandomProxy();
-			curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str());
-			res = curl_easy_perform(curl);
-			if(res==CURLE_OK){
-				proxySuccess=true;
-				break;
-			}
-			else{
-				std::cerr << "curl_easy_perform() failed with proxy: " << proxy << " - " << curl_easy_strerror(res) << std::endl;
-			}
-			
-		}
-		if (!proxySuccess)
+			bool proxySuccess = false;
+			const int maxRetries = 5;
+			for (int i = 0; i < maxRetries; ++i)
 			{
-				std::cerr << "curl_easy_perform() failed: " <<  curl_easy_strerror(res) << std::endl;
+				std::string proxy = getRandomProxy();
+				curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str());
+				res = curl_easy_perform(curl);
+				if (res == CURLE_OK)
+				{
+					proxySuccess = true;
+					break;
+				}
+				else
+				{
+					std::cerr << "curl_easy_perform() failed with proxy: " << proxy << " - " << curl_easy_strerror(res) << std::endl;
+				}
 			}
-	}
-	else
-	{
-		res = curl_easy_perform(curl);
-		if (res != CURLE_OK)
-		{
-			std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+			if (!proxySuccess)
+			{
+				std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+			}
 		}
 	}
 	curl_easy_cleanup(curl);
@@ -135,7 +134,7 @@ size_t WebCrawler::WriteCallback(void *contents, size_t size, size_t nmemb, void
 
 void WebCrawler::fetchRobotsTxtContent()
 {
-	std::string content = fetchPage(m_urlParser.getRobotsTxtURL(),m_useProxy);
+	std::string content = fetchPage(m_urlParser.getRobotsTxtURL(), m_useProxy);
 	std::vector<std::string> links{m_parser.extractRobotsTxtLinks(content)};
 	std::string absoluteURL{};
 	for (const auto &link : links)
@@ -176,22 +175,24 @@ std::string WebCrawler::getRandomProxy()
 
 void WebCrawler::fetchProxies(const std::string &url)
 {
-	try{
-	proxiesList.clear();
-	std::string proxies = fetchPage(url,false);
-	std::istringstream stream(proxies);
-    std::string proxy;
-    while (stream >> proxy)
-    {
-		std::cout<<proxy<<"\n";
-        proxiesList.push_back("http://"+proxy);
-    }
-	if(proxiesList.empty()){
-		std::cerr<<"No proxies where fetched\n";
+	try
+	{
+		proxiesList.clear();
+		std::string proxies = fetchPage(url, false);
+		std::istringstream stream(proxies);
+		std::string proxy;
+		while (stream >> proxy)
+		{
+			std::cout << proxy << "\n";
+			proxiesList.push_back("http://" + proxy);
+		}
+		if (proxiesList.empty())
+		{
+			std::cerr << "No proxies where fetched\n";
+		}
 	}
-	}catch(std::exception& e){
-		std::cerr<<"Failed to fetch proxies: "<<e.what()<<'\n';
+	catch (std::exception &e)
+	{
+		std::cerr << "Failed to fetch proxies: " << e.what() << '\n';
 	}
-
-
 }

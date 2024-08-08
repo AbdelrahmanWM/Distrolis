@@ -11,7 +11,7 @@ static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
 static const int NUMBER_OF_PAGES = 10;
-static const bool USE_PROXY = false;
+static const bool USE_PROXY = true;
 static std::queue<std::string>seed_urls({
 	 "https://www.bbc.com",
     "https://www.cnn.com/",
