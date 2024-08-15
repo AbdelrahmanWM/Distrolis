@@ -199,7 +199,7 @@ void DataBase::clearCollection(const std::string& database_name, const std::stri
 
 void DataBase::saveInvertedIndex(const std::unordered_map<std::string,  std::unordered_map<std::string,int>> &index, const std::string&database_name,const std::string collection_name) const
 {
-    std::cout << "are we here?\n";
+
     bson_t *document = bson_new();
     if (!document)
     {

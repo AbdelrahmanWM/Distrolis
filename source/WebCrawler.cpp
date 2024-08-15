@@ -183,7 +183,7 @@ void WebCrawler::fetchProxies(const std::string &url)
 		std::string proxy;
 		while (stream >> proxy)
 		{
-			std::cout << proxy << "\n";
+			// std::cout << proxy << "\n";
 			proxiesList.push_back("http://" + proxy);
 		}
 		if (proxiesList.empty())

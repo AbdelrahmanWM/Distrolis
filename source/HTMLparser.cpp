@@ -134,7 +134,7 @@ std::string HTMLParser::extractElement(const htmlDocPtr& doc, const xmlXPathCont
 void HTMLParser::extractTextNodes(xmlNodePtr node, std::string &output) const{
     for (xmlNode *cur = node; cur; cur = cur->next) {
         if (cur->type == XML_TEXT_NODE) {
-            output += (const char*)cur->content;
+            output =output +" "+(const char*)cur->content;
         }
         extractTextNodes(cur->children, output);
     }
