@@ -20,6 +20,7 @@ set(SOURCES
     source/WebCrawler.cpp
     source/HTMLParser.cpp
     source/InvertedIndex.cpp
+    source/WordProcessor.cpp
 )
 
 # Add the executable

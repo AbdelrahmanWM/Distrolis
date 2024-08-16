@@ -7,7 +7,8 @@
 #include <sstream>
 #include <unordered_set>
 #include "DataBase.h"
-#include "libstemmer.h"
+
+
 
 
 class InvertedIndex
@@ -23,12 +24,7 @@ private:
     const std::string m_database_name;
     const std::string m_collection_name;
     const std::string m_documents_collection_name;
-    std::vector<std::string> tokenize(std::string &content);
-    bool isValidWord(std::string word);
-    std::string normalize(std::string &token);
-    std::string stem(std::string &word);
-    bool isStopWord(std::string &word);
-    static const std::unordered_set<std::string>& getStopWords();
+  
 };
 
 #endif
