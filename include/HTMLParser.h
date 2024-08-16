@@ -4,6 +4,7 @@
 #include<libxml/HTMLparser.h>
 #include<vector>
 #include<iostream>
+#include <unordered_set>
 #include "DataBase.h"
 
 class HTMLParser {
@@ -43,6 +44,7 @@ private:
 	void freeHtmlDocumentContextObject(const htmlDocPtr& doc, const xmlXPathContextPtr& xpathCtx, const xmlXPathObjectPtr& xpathObject)  const;
 	const bson_t* createBSONFromDocument(const documentStructure& doc) const;
 	void extractTextNodes(xmlNodePtr node, std::string &output) const;
+	static const std::unordered_set<std::string>& getHTMLSkipTags();
 };
 
 

@@ -132,13 +132,44 @@ std::string HTMLParser::extractElement(const htmlDocPtr& doc, const xmlXPathCont
     return element;
 }
 void HTMLParser::extractTextNodes(xmlNodePtr node, std::string &output) const{
+    const std::unordered_set<std::string> HTMLSkepTags= getHTMLSkipTags();    
     for (xmlNode *cur = node; cur; cur = cur->next) {
-        if (cur->type == XML_TEXT_NODE) {
+
+        if(cur->type == XML_ELEMENT_NODE && HTMLSkepTags.find((const char *)cur->name) != HTMLSkepTags.end()){
+            continue;
+        }
+        if (cur->type == XML_TEXT_NODE ) {
             output =output +" "+(const char*)cur->content;
         }
+
         extractTextNodes(cur->children, output);
     }
 }
+
+const std::unordered_set<std::string>& HTMLParser::getHTMLSkipTags()
+{
+    static const std::unordered_set<std::string> HTMLSkipTags = {
+        // Navigation and Layout Elements
+        "nav", "header", "footer", "aside", "menu",
+
+        // Interactive Elements
+        "button", "input", "select", "textarea", "form", "details", "summary",
+
+        // Script and Style Elements
+        "script", "style", "link",
+
+        // Media and Embeds
+        "img", "video", "audio", "embed", "object", "iframe",
+
+        // Advertisement and Tracking Elements
+        "ins", "noscript",
+
+        // Other Miscellaneous Elements
+        "hr", "small"
+    };
+    return HTMLSkipTags;
+}
+
 std::string HTMLParser::extractText(const htmlDocPtr& doc)const{
     std::cout<<"Extract text\n";
     if(!doc){
@@ -149,7 +180,7 @@ std::string HTMLParser::extractText(const htmlDocPtr& doc)const{
     std::string textContent;
     extractTextNodes(root,textContent);
     std::cout<<"Extract text done\n";
-
+    std::cout<<textContent<<'\n';
     return textContent;
 
 }

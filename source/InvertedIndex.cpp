@@ -35,16 +35,16 @@ void InvertedIndex::run(bool clear)
 void InvertedIndex::addDocument(const std::string docId, std::string &content)
 {   
     std::vector<std::string> tokens = WordProcessor::tokenize(content);
-    for (std::string token : tokens)
+    std::string token{};
+    for (int i=0;i<tokens.size();i++)
     {
-        token = WordProcessor::normalize(token);
+        token = WordProcessor::normalize(tokens[i]);
         
         if (WordProcessor::isStopWord(token))
             continue;
         token = WordProcessor::stem(token);
         if(WordProcessor::isValidWord(token)){
-        if(m_index[token][docId])m_index[token][docId]++;
-        else m_index[token][docId]=1;
+        m_index[token][docId].push_back(i);
         }
     }
 }

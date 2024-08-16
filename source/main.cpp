@@ -10,10 +10,11 @@
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
-static const int NUMBER_OF_PAGES = 100;
+static const int NUMBER_OF_PAGES = 1;
 static const bool USE_PROXY = true;
 static std::queue<std::string>seed_urls({
-	 "https://www.bbc.com",
+
+	"https://www.bbc.com",
     "https://www.cnn.com/",
     "https://techcrunch.com/",
     "https://www.wired.com/",
@@ -35,6 +36,7 @@ int main(int argc, char*argv[])
 	}
 	const std::string connectionString = argv[1];
 	const std::string proxyAPIUrl = argv[2];
+
 	const DataBase* db = DataBase::getInstance(connectionString);
 	
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -42,7 +44,7 @@ int main(int argc, char*argv[])
 	URLParser urlParser{seed_urls.front()};
 	WebCrawler webCrawler{ seed_urls ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION,USE_PROXY,proxyAPIUrl};
 	webCrawler.run(true);
-
+    
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION};
 	invertedIndex.run(true);
 
