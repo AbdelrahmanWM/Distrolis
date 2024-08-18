@@ -9,6 +9,10 @@ HTMLParser::~HTMLParser()
 {
     xmlCleanupParser();
 }
+bson_t * HTMLParser::getPageDocument(const std::string & htmlContent, const std::string & url) const
+{
+    return createBSONFromDocument(extractElements(htmlContent,url));
+}
 void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, const DataBase *&db,const std::string&database_name, const std::string& collection_name) const
 {
 
@@ -23,9 +27,7 @@ void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, cons
         throw;
     }
 }
-const bson_t * HTMLParser::getPageDocument(const std::string &htmlContent, const std::string &url) const{
-    return createBSONFromDocument(extractElements(htmlContent,url));
-}
+
 std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string &htmlContent) const
 {
     std::vector<std::string> links{};
@@ -171,7 +173,7 @@ const std::unordered_set<std::string>& HTMLParser::getHTMLSkipTags()
 }
 
 std::string HTMLParser::extractText(const htmlDocPtr& doc)const{
-    std::cout<<"Extract text\n";
+
     if(!doc){
         std::cerr<<"Failed to parse HTML\n";
         return "";
@@ -179,8 +181,7 @@ std::string HTMLParser::extractText(const htmlDocPtr& doc)const{
     xmlNodePtr root = xmlDocGetRootElement(doc);
     std::string textContent;
     extractTextNodes(root,textContent);
-    std::cout<<"Extract text done\n";
-    std::cout<<textContent<<'\n';
+
     return textContent;
 
 }
@@ -263,7 +264,7 @@ void HTMLParser::freeHtmlDocumentContextObject(const htmlDocPtr& doc, const xmlX
         xmlFreeDoc(doc);
 }
 
-const bson_t *HTMLParser::createBSONFromDocument(const documentStructure &doc) const
+bson_t *HTMLParser::createBSONFromDocument(const documentStructure &doc) const
 {
     bson_t *bson = bson_new();
     

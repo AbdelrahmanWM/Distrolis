@@ -30,15 +30,17 @@ add_executable(DistributedSearchEngine ${SOURCES})
 target_include_directories(DistributedSearchEngine PRIVATE 
     ${PROJECT_SOURCE_DIR}/include
     "E:/CppModules/libstemmer/libstemmer_c-2.2.0/libstemmer_c-2.2.0/include"
-    "C:/msys64/mingw64/include/libxml2"  # Correct path for libxml2 headers
-    "C:/msys64/mingw64/include/mongoc-1.0/libmongoc-1.0"
+    "C:/msys64/mingw64/include/libxml2"
+    # "C:/mongo-c-driver/include/libmongoc-1.0"
+    # "C:/mongo-c-driver/include/libbson-1.0"
     "C:/msys64/mingw64/include/mongoc-1.0/libbson-1.0"
+    "C:/msys64/mingw64/include/mongoc-1.0/libmongoc-1.0"
 )
 
 # Link directories
 link_directories(
     "C:/msys64/mingw64/lib"
-    "E:/CppModules/libstemmer/libstemmer_c-2.2.0/libstemmer_c-2.2.0"  # Correct path for libstemmer.a
+    "C:/mongo-c-driver/lib"
 )
 
 # Link libraries
@@ -47,8 +49,8 @@ target_link_libraries(DistributedSearchEngine PRIVATE
     ${CMAKE_DL_LIBS}
     curl
     xml2
-    mongoc-1.0
-    bson-1.0
+    mongoc-1.0  # Dynamic library for MongoDB
+    bson-1.0    # Dynamic library for BSON
 )
 
 # Compiler options

@@ -91,7 +91,7 @@ void DataBase::insertDocument(const bson_t *document,const std::string& database
         mongoc_collection_destroy(collection);
     }
 }
-void DataBase::insertManyDocuments(std::vector<const bson_t *>documents,const std::string& database_name, const std::string &collection_name) const
+void DataBase::insertManyDocuments(std::vector<bson_t *>documents,const std::string& database_name, const std::string &collection_name) const
 {
 
     mongoc_collection_t *collection = nullptr;
@@ -107,8 +107,8 @@ void DataBase::insertManyDocuments(std::vector<const bson_t *>documents,const st
         }
 
         std::cout << "Collection obtained successfully." << std::endl;
-
-        insertSuccess = mongoc_collection_insert_many(collection, documents.data(),documents.size(), nullptr, nullptr, &error);
+        std::vector<const bson_t*> documentPointers(documents.begin(),documents.end());
+        insertSuccess = mongoc_collection_insert_many(collection, documentPointers.data(),documentPointers.size(), nullptr, nullptr, &error);
         if (!insertSuccess)
         {
             std::cerr << "Failed to insert documents: " << error.message << std::endl;
@@ -128,9 +128,42 @@ void DataBase::insertManyDocuments(std::vector<const bson_t *>documents,const st
         mongoc_collection_destroy(collection);
     }
 }
-std::vector<bson_t> DataBase::getAllDocuments(const std::string& database_name, const std::string& collection_name) const
+bson_t* DataBase::getDocument(const std::string &database_name, const std::string &collection_name) const
 {
-    std::vector<bson_t> documents{};
+    bson_t* document = nullptr;
+    mongoc_collection_t* collection = nullptr;
+    mongoc_cursor_t* cursor = nullptr;
+    const bson_t* result = nullptr;
+
+    try{
+        collection = mongoc_client_get_collection(m_client,database_name.c_str(),collection_name.c_str());
+        if(!collection){
+            std::cerr<<"Failed to get collection: "<<collection_name<<std::endl;
+            return {};
+        }
+        bson_t query;
+        bson_init(&query);
+
+        cursor = mongoc_collection_find_with_opts(collection,&query,nullptr,nullptr);
+        if(mongoc_cursor_next(cursor,&result)){
+            document = bson_copy(result);
+        }else {
+            std::cerr<<"No document found in the collection: "<<collection_name<<std::endl;
+        }
+    }catch(...){
+        std::cerr<<"An error ocurred while getting the document."<<std::endl;
+    }
+    if(collection){
+        mongoc_collection_destroy(collection);
+    }
+    if(cursor){
+        mongoc_cursor_destroy(cursor);
+    }
+    return document? document:nullptr ;
+}
+std::vector<bson_t*> DataBase::getAllDocuments(const std::string &database_name, const std::string &collection_name) const
+{
+    std::vector<bson_t*> documents{};
     mongoc_collection_t *collection = nullptr;
     mongoc_cursor_t *cursor = nullptr;
     try
@@ -152,7 +185,7 @@ std::vector<bson_t> DataBase::getAllDocuments(const std::string& database_name, 
         while (mongoc_cursor_next(cursor, &doc))
         {
             bson_t *copied_doc = bson_copy(doc);
-            documents.push_back(*copied_doc);
+            documents.push_back(copied_doc);
         }
     }
     catch (std::exception &ex)
@@ -199,54 +232,69 @@ void DataBase::clearCollection(const std::string& database_name, const std::stri
 
 void DataBase::saveInvertedIndex(const std::unordered_map<std::string,  std::unordered_map<std::string,std::vector<int>>> &index, const std::string&database_name,const std::string collection_name) const
 {
-
-    bson_t *document = bson_new();
-    if (!document)
-    {
-        std::cerr << "Failed to create BSON document." << std::endl;
-        return;
-    }
+    // bson_t *document = bson_new();
+    std::vector<bson_t *> documents{};
+    // if (!document)
+    // {
+    //     std::cerr << "Failed to create BSON document." << std::endl;
+    //     return;
+    // }
 
     try
     {
         for (const auto &[term, map] : index)
         {  
-            bson_t term_doc;
-            BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
+            bson_t* term_doc= bson_new();
+            if(!term_doc){
+                std::cerr<<"Failed to create BSON document."<<std::endl;
+            }
+            bson_t postings_array;
+            BSON_APPEND_ARRAY_BEGIN(term_doc,term.c_str(),&postings_array);
+            // BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
             int i = 0;
             for (const auto &[docId, positions] : map)
             {
 
-                bson_t posting_doc;
+                bson_t posting_doc{};
                 std::string key = std::to_string(i++);
-                BSON_APPEND_DOCUMENT_BEGIN(&term_doc, key.c_str(), &posting_doc);
+                BSON_APPEND_DOCUMENT_BEGIN(&postings_array, key.c_str(), &posting_doc);
 
                 BSON_APPEND_UTF8(&posting_doc, "docId", docId.c_str());
                 
-                bson_t positions_array;
+                bson_t positions_array{};
+                int pos_index{};
                 BSON_APPEND_ARRAY_BEGIN(&posting_doc,"positions",&positions_array);
 
-                int pos_index = 0;
+                
                 for(int pos: positions){
-                    BSON_APPEND_INT32(&positions_array, std::to_string(pos_index++).c_str(), pos);
+                    std::string key = std::to_string(pos_index);  // Use pos_index without incrementing
+                    BSON_APPEND_INT32(&positions_array, key.c_str(), pos);
+                    pos_index++; 
                 }
                 bson_append_array_end(&posting_doc,&positions_array);
 
-                bson_append_document_end(&term_doc, &posting_doc);
+                bson_append_document_end(&postings_array, &posting_doc);
             }
-            bson_append_array_end(document, &term_doc);
+            // bson_append_array_end(document, &term_doc);
+            bson_append_array_end(term_doc,&postings_array);
+            documents.push_back(term_doc);
         }
-        insertDocument(document, database_name,collection_name);
+        // insertDocument(document, database_name,collection_name);
+        insertManyDocuments(documents,database_name,collection_name);
+        for(bson_t* document: documents){
+            bson_destroy(document);
+        }
     }
     catch (const std::exception &ex)
     {
         std::cerr << "Exception: " << ex.what() << std::endl;
     }
 
-    bson_destroy(document);
+    // bson_destroy(document);
+    
 }
 
-std::string DataBase::extractContentFromIndexDocument(const bson_t &document) const
+std::string DataBase::extractContentFromIndexDocument(const bson_t* document) const
 {
     std::vector<std::string> fields{"title", "description", "content", "keywords"};
     std::string content;
@@ -254,7 +302,7 @@ std::string DataBase::extractContentFromIndexDocument(const bson_t &document) co
 
     for (const auto &field : fields)
     {
-        if (bson_iter_init_find(&iter, &document, field.c_str()))
+        if (bson_iter_init_find(&iter, document, field.c_str()))
         {
             if (BSON_ITER_HOLDS_UTF8(&iter))
             {
@@ -271,12 +319,12 @@ std::string DataBase::extractContentFromIndexDocument(const bson_t &document) co
     return content;
 }
 
-std::string DataBase::extractIndexFromIndexDocument(const bson_t &document) const
+std::string DataBase::extractIndexFromIndexDocument(const bson_t* document) const
 {
     std::string docId;
     bson_iter_t iter;
 
-    if (bson_iter_init_find(&iter, &document, "_id"))
+    if (bson_iter_init_find(&iter, document, "_id"))
     {
         if (BSON_ITER_HOLDS_UTF8(&iter))
         {
@@ -302,3 +350,5 @@ std::string DataBase::extractIndexFromIndexDocument(const bson_t &document) cons
 
     return docId;
 }
+
+

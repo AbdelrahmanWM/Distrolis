@@ -32,7 +32,7 @@ private:
 	URLParser& m_urlParser;
 	int m_max_pages_to_crawl;
 	std::queue<std::string> m_frontier;
-	std::vector<const bson_t*> m_crawled_pages;
+	std::vector<bson_t*> m_crawled_pages;
 	std::unordered_set<size_t> m_visitedUrls;
 	const std::string m_database_name;
 	const std::string m_collection_name; 
