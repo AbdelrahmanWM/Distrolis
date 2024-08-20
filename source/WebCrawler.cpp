@@ -91,7 +91,7 @@ std::string WebCrawler::fetchPage(const std::string &url, bool useProxy)
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, getRandomUserAgent().c_str());
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK)

@@ -10,7 +10,8 @@
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
-static const int NUMBER_OF_PAGES = 1;
+static const std::string METADATA_COLLECTION="Metadata";
+static const int NUMBER_OF_PAGES = 10;
 static const bool USE_PROXY = true;
 static std::queue<std::string>seed_urls({
 
@@ -45,8 +46,8 @@ int main(int argc, char*argv[])
 	WebCrawler webCrawler{ seed_urls ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION,USE_PROXY,proxyAPIUrl};
 	webCrawler.run(true);
     
-	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION};
-	invertedIndex.run(true);
+	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
+	invertedIndex.run(false);
 
 	curl_global_cleanup();
 }

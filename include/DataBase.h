@@ -20,6 +20,7 @@ public:
     std::vector<bson_t*> getAllDocuments(const std::string& database_name, const std::string& collection_name) const;
     void clearCollection(const std::string& database_name, const std::string collection_name) const;
     void saveInvertedIndex (const std::unordered_map<std::string,  std::unordered_map<std::string,std::vector<int>>> &index, const std::string&database_name,const std::string collection_name) const;
+    
     std::string extractContentFromIndexDocument(const bson_t* document) const;
     std::string extractIndexFromIndexDocument(const bson_t* document) const;
 private:
