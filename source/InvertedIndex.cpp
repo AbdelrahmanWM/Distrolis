@@ -18,6 +18,7 @@ void InvertedIndex::run(bool clear)
 
         if(!clear){
             retrieveExistingIndex();
+            retrieveExistingMetadataDocument();
         }
         documents = m_db->getAllDocuments(m_database_name,m_documents_collection_name);
         std::cout << "size: " << documents.size() << '\n';
@@ -61,6 +62,38 @@ void InvertedIndex::addDocument(const std::string docId, std::string &content)
         }
     }
 }
+
+void InvertedIndex::retrieveExistingMetadataDocument()
+{
+    bson_t* document = m_db->getDocument(m_database_name,m_metadata_collection_name);
+    bson_iter_t iter;
+    if(!bson_iter_init(&iter,document)){
+        std::cerr<<"Failed to initialize BSON iterator."<<std::endl;
+        return;
+    }
+    while(bson_iter_next(&iter)){
+        if(strcmp(bson_iter_key(&iter),"total_documents") == 0){
+            m_document_metadata.total_documents = bson_iter_int64(&iter);
+        }
+        if(strcmp(bson_iter_key(&iter),"average_doc_length") == 0){
+            m_document_metadata.average_doc_length = bson_iter_double(&iter);
+        }
+        if(strcmp(bson_iter_key(&iter),"doc_lengths") == 0){
+            bson_iter_t doc_iter;
+            bson_iter_recurse(&iter,&doc_iter);
+            int index = 0;
+            while(bson_iter_next(&doc_iter)){
+
+                int length= bson_iter_int64(&doc_iter);
+                auto documentId =bson_iter_key(&doc_iter); 
+                std::cout<<documentId<<","<<length<<"\n";
+                m_document_metadata.doc_lengths[documentId] = length ;
+            }
+        }
+    }
+}
+
+
 
 void InvertedIndex::retrieveExistingIndex()
 {
@@ -129,17 +162,18 @@ void InvertedIndex::saveMetadataDocument()
         bson_append_int64(bson, "total_documents", -1, m_document_metadata.total_documents);
         bson_append_double(bson, "average_doc_length", -1, m_document_metadata.average_doc_length);
         bson_t documents_map;
-        BSON_APPEND_ARRAY_BEGIN(bson,"doc_lengths",&documents_map);
+        BSON_APPEND_DOCUMENT_BEGIN(bson,"doc_lengths",&documents_map);
         for(const auto&[docId,docSize]:m_document_metadata.doc_lengths){
             bson_append_int64(&documents_map,docId.c_str(),-1,docSize);
         }
-        bson_append_array_end(bson,&documents_map);
+        bson_append_document_end(bson,&documents_map);
         
     }
     catch (const std::exception &ex)
     {
         std::cerr << "Error: " << ex.what() << std::endl;
     }
+    m_db->clearCollection(m_database_name,m_metadata_collection_name);
     m_db->insertDocument(bson,m_database_name,m_metadata_collection_name);
 }
 
@@ -157,6 +191,8 @@ void InvertedIndex::updateMetadataDocument()
         /(m_document_metadata.total_documents+m_iteration_metadata.total_documents);
 
         m_document_metadata.total_documents+=m_iteration_metadata.total_documents;
+        // for(auto document: m_document_metadata.doc_lengths)std::cout<<document.first<<","<<document.second<<'\n';
+        // for(auto document: m_iteration_metadata.doc_lengths)std::cout<<document.first<<","<<document.second<<'\n';
         m_document_metadata.doc_lengths.insert(m_iteration_metadata.doc_lengths.begin(),m_iteration_metadata.doc_lengths.end());
     }
 }

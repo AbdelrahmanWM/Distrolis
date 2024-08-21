@@ -26,6 +26,7 @@ private:
         document_metadata() : total_documents(0), average_doc_length(0.0) {}
     };
     void addDocument(const std::string docId, std::string &content);
+    void retrieveExistingMetadataDocument();
     void retrieveExistingIndex();
     void extractInvertedIndexDocument(const bson_t*document);
     void saveInvertedIndex();
