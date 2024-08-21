@@ -93,7 +93,10 @@ void DataBase::insertDocument(const bson_t *document,const std::string& database
 }
 void DataBase::insertManyDocuments(std::vector<bson_t *>documents,const std::string& database_name, const std::string &collection_name) const
 {
-
+    if(documents.size()==0){
+        std::cout<<"No documents to insert\n";
+        return;
+    }
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     bool insertSuccess = false;
@@ -144,6 +147,7 @@ bson_t* DataBase::getDocument(const std::string &database_name, const std::strin
         bson_t query;
         bson_init(&query);
 
+
         cursor = mongoc_collection_find_with_opts(collection,&query,nullptr,nullptr);
         if(mongoc_cursor_next(cursor,&result)){
             document = bson_copy(result);
@@ -161,7 +165,7 @@ bson_t* DataBase::getDocument(const std::string &database_name, const std::strin
     }
     return document? document:nullptr ;
 }
-std::vector<bson_t*> DataBase::getAllDocuments(const std::string &database_name, const std::string &collection_name) const
+std::vector<bson_t*> DataBase::getAllDocuments(const std::string &database_name, const std::string &collection_name,bson_t*filters) const
 {
     std::vector<bson_t*> documents{};
     mongoc_collection_t *collection = nullptr;
@@ -174,7 +178,7 @@ std::vector<bson_t*> DataBase::getAllDocuments(const std::string &database_name,
             std::cerr << "Failed to get collection: " << collection_name << std::endl;
             return {};
         }
-        cursor = mongoc_collection_find_with_opts(collection, bson_new(), nullptr, nullptr);
+        cursor = mongoc_collection_find_with_opts(collection, filters, nullptr, nullptr);
         if (!cursor)
         {
             std::cerr << "Failed to get cursor to collection: " << collection_name << std::endl;
@@ -292,6 +296,36 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string,  std::uno
 
     // bson_destroy(document);
     
+}
+
+void DataBase::markDocumentProcessed(const bson_t *document, const std::string &database_name, const std::string &collection_name) const
+{
+    bson_error_t error;
+    bson_t* update = NULL;
+    bson_t query;
+    bson_iter_t iter;
+
+    if(bson_iter_init(&iter,document)&&bson_iter_find(&iter, "_id")){
+        const bson_oid_t* oid = bson_iter_oid(&iter);
+        bson_init(&query);    
+        BSON_APPEND_OID(&query,"_id",oid);
+        update = bson_new();
+        bson_t child;
+        BSON_APPEND_DOCUMENT_BEGIN(update,"$set",&child);
+        BSON_APPEND_BOOL(&child,"processed",true);
+        bson_append_document_end(update,&child);
+
+        mongoc_collection_t* collection = mongoc_client_get_collection(m_client,database_name.c_str(),collection_name.c_str());
+        if(!mongoc_collection_update_one(collection,&query,update,NULL,NULL,&error)){
+            std::cerr<<"Failed to update document: "<<error.message<<std::endl;
+        }else{
+            std::cout<<"Document successfully updated."<<std::endl;
+        }
+    }else{
+        std::cerr<<"Document doesn't contain an _id field"<<std::endl;
+        return;
+    }
+
 }
 
 std::string DataBase::extractContentFromIndexDocument(const bson_t* document) const

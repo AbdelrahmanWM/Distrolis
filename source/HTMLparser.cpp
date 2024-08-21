@@ -92,6 +92,7 @@ HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &h
         document.image_links = extractElement(doc, xpathCtx, "//img/@src");
         document.content = extractText(doc);
         document.url = url;
+        document.processed = false;
         }
     }
     catch (std::exception &ex)
@@ -283,6 +284,7 @@ bson_t *HTMLParser::createBSONFromDocument(const documentStructure &doc) const
         bson_append_utf8(bson, "tags", -1, doc.tags.c_str(), -1);
         bson_append_utf8(bson, "image_links", -1, doc.image_links.c_str(), -1);
         bson_append_utf8(bson, "content", -1, doc.content.c_str(), -1);
+        bson_append_bool(bson,"processed",-1,false);
         // char* str = bson_as_json(bson, nullptr);
     }
     catch (const std::exception &ex)

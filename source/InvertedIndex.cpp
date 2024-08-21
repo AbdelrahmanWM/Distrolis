@@ -20,7 +20,7 @@ void InvertedIndex::run(bool clear)
             retrieveExistingIndex();
             retrieveExistingMetadataDocument();
         }
-        documents = m_db->getAllDocuments(m_database_name,m_documents_collection_name);
+        documents = m_db->getAllDocuments(m_database_name,m_documents_collection_name,BCON_NEW("processed",BCON_BOOL(false)));
         std::cout << "size: " << documents.size() << '\n';
         m_iteration_metadata.total_documents+=documents.size();
         
@@ -29,6 +29,7 @@ void InvertedIndex::run(bool clear)
             std::string content = m_db->extractContentFromIndexDocument(document);
             std::string docId = m_db->extractIndexFromIndexDocument(document);
             addDocument(docId, content);
+            m_db->markDocumentProcessed(document,m_database_name,m_documents_collection_name);
         }
         updateMetadataDocument();
         // std::cout<<"Average: "<<m_document_metadata.average_doc_length<<"\n";
@@ -81,7 +82,7 @@ void InvertedIndex::retrieveExistingMetadataDocument()
         if(strcmp(bson_iter_key(&iter),"doc_lengths") == 0){
             bson_iter_t doc_iter;
             bson_iter_recurse(&iter,&doc_iter);
-            int index = 0;
+
             while(bson_iter_next(&doc_iter)){
 
                 int length= bson_iter_int64(&doc_iter);

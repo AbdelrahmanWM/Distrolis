@@ -22,6 +22,7 @@ public:
 		std::string tags;
 		std::string image_links;
 		std::string content;
+		bool processed;
 	};
 	HTMLParser();
 	~HTMLParser();
