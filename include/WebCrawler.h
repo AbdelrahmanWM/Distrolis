@@ -12,13 +12,13 @@
 
 class WebCrawler {
 public:
-	WebCrawler(std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name,const bool useProxy,const std::string& proxyAPIUrl="");
+	WebCrawler(std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name, const std::string& visitedUrls_collection_name,const bool useProxy,const std::string& proxyAPIUrl="");
 	~WebCrawler();
 	void run(bool clear = false);
 
 private: 
 	void parsePage(const std::string& htmlContent, const std::string& url);
-	static std::string fetchPage(const std::string& url,bool useProxy=true);
+	std::string fetchPage(const std::string& url,bool useProxy=true);
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
     static std::string getRandomUserAgent();
 	static std::string getRandomProxy();
@@ -27,6 +27,9 @@ private:
 	void fetchRobotsTxtContent();
     bool isURLVisited(const std::string& absoluteURL);
 	void markURLAsVisited(const std::string& absoluteURL);
+	void saveVisitedUrls();
+	void retrieveVisitedUrls();
+
 	const DataBase*& m_db;
 	const HTMLParser& m_parser;
 	URLParser& m_urlParser;
@@ -36,6 +39,7 @@ private:
 	std::unordered_set<size_t> m_visitedUrls;
 	const std::string m_database_name;
 	const std::string m_collection_name; 
+	const std::string m_visitedUrls_collection_name;
 	const bool m_useProxy;
 	static std::vector<std::string> proxiesList;
 
