@@ -1,6 +1,6 @@
 #include "WordProcessor.h"
 
-std::vector<std::string> WordProcessor::tokenize(std::string &content)
+std::vector<std::string> WordProcessor::tokenize(const std::string &content)
 {
     std::regex rgx{R"(\b[\w'-]+\b)"};
     auto words_begin = std::sregex_iterator (content.begin(),content.end(),rgx);

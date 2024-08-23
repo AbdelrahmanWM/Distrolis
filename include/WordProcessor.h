@@ -10,7 +10,7 @@
 class WordProcessor
 {
 public:
-    static std::vector<std::string> tokenize(std::string &content);
+    static std::vector<std::string> tokenize(const std::string &content);
     static bool isValidWord(std::string word);
     static std::string normalize(std::string &token);
     static std::string stem(std::string &word);

@@ -21,6 +21,7 @@ set(SOURCES
     source/HTMLParser.cpp
     source/InvertedIndex.cpp
     source/WordProcessor.cpp
+    source/BM25Ranker.cpp
 )
 
 # Add the executable

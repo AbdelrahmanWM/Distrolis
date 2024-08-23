@@ -21,7 +21,7 @@ void InvertedIndex::run(bool clear)
             retrieveExistingMetadataDocument();
         }
         documents = m_db->getAllDocuments(m_database_name,m_documents_collection_name,BCON_NEW("processed",BCON_BOOL(false)));
-        std::cout << "size: " << documents.size() << '\n';
+        // std::cout << "size: " << documents.size() << '\n';
         m_iteration_metadata.total_documents+=documents.size();
         
         for (auto document : documents)
@@ -41,8 +41,13 @@ void InvertedIndex::run(bool clear)
     }
     catch (std::exception &ex)
     {
-        std::cout << "Error: " << ex.what() << '\n';
+        std::cerr << "Error: " << ex.what() << '\n';
     }
+}
+
+InvertedIndex::document_metadata InvertedIndex::getMetadataDocument()
+{
+    return m_document_metadata;
 }
 
 void InvertedIndex::addDocument(const std::string docId, std::string &content)
@@ -87,7 +92,7 @@ void InvertedIndex::retrieveExistingMetadataDocument()
 
                 int length= bson_iter_int64(&doc_iter);
                 auto documentId =bson_iter_key(&doc_iter); 
-                std::cout<<documentId<<","<<length<<"\n";
+                // std::cout<<documentId<<","<<length<<"\n";
                 m_document_metadata.doc_lengths[documentId] = length ;
             }
         }
@@ -104,6 +109,11 @@ void InvertedIndex::retrieveExistingIndex()
         InvertedIndex::extractInvertedIndexDocument(document);
     }
 
+}
+
+std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> InvertedIndex::getInvertedIndex()
+{
+    return m_index;
 }
 
 void InvertedIndex::extractInvertedIndexDocument(const bson_t *document)

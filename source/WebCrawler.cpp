@@ -69,7 +69,7 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 	}
 	catch (std::runtime_error &ex)
 	{
-		std::cout << "Error: " << ex.what() << '\n';
+	std::cerr << "Error: " << ex.what() << '\n';
 	}
 	std::string absoluteUrl{};
 
@@ -254,11 +254,11 @@ void WebCrawler::retrieveVisitedUrls()
 					m_visitedUrls.insert(url);
 				}
 			}
-			std::cout << "Visited URLs:" << std::endl;
-			for (auto url : m_visitedUrls)
-			{
-				std::cout << url << std::endl;
-			}
+			// std::cout << "Visited URLs:" << std::endl;
+			// for (auto url : m_visitedUrls)
+			// {
+			// 	std::cout << url << std::endl;
+			// }
 		}
 		else
 		{

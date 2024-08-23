@@ -5,6 +5,7 @@
 #include "URLParser.h"
 #include <queue>
 #include "InvertedIndex.h"
+#include "BM25Ranker.h"
 
 
 static const std::string DATABASE = "SearchEngine";
@@ -14,6 +15,9 @@ static const std::string INVERTED_INDEX_COLLECTION = "Index";
 static const std::string METADATA_COLLECTION="Metadata";
 static const int NUMBER_OF_PAGES = 5;
 static const bool USE_PROXY = false;
+static const double BM25K1 = 1.5;
+static const double BM25B = 0.75;
+
 static std::queue<std::string>seed_urls({
 
 	"https://www.bbc.com",
@@ -49,7 +53,12 @@ int main(int argc, char*argv[])
     
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
 	invertedIndex.run(false);
-
+    
+	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex,BM25K1,BM25B};
+	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("Median salary and job opening data are sourced from United States");
+	for(const auto&pair:documents){
+		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
+	}
 	curl_global_cleanup();
 }
 //CURL* curl;
