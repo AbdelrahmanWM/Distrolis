@@ -14,6 +14,7 @@ private:
     void extractInvertedIndexAndMetadata();
     void initializeDocumentScores();
     void calculateBM25ScoreForTerm(const std::string& term);
+    std::unordered_map<std::string,int>calculateTermFrequencyMetadata(const std::vector<std::string>&term_vector);
     std::vector<std::pair<std::string,double>> sortDocumentScores();
     std::vector<std::string> tokenizeQuery(const std::string& query);
     std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>> m_term_frequencies;

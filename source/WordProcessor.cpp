@@ -10,7 +10,7 @@ std::vector<std::string> WordProcessor::tokenize(const std::string &content)
     for(std::sregex_iterator i= words_begin; i != words_end; ++i)
     {
         token = (*i).str();
-        if(WordProcessor::isValidWord(token))// Temporary filtration step until better solution is found
+        // if(WordProcessor::isValidWord(token))// Temporary filtration step until better solution is found
         tokens.push_back(token);
     }
     return tokens;
@@ -19,10 +19,10 @@ std::vector<std::string> WordProcessor::tokenize(const std::string &content)
 
 bool WordProcessor::isValidWord(std::string word)
 {
-    return word.size()>3&&word.size()<=20;
+    return word.size()>=3&&word.size()<=20;
 }
 
-std::string WordProcessor::normalize(std::string &token)
+std::string WordProcessor::normalize(const std::string &token)
 {
     std::string normalized;
     std::transform(token.begin(), token.end(), std::back_inserter(normalized), ::tolower);
@@ -30,7 +30,7 @@ std::string WordProcessor::normalize(std::string &token)
     return normalized;
 }
 
-std::string WordProcessor::stem(std::string &word)
+std::string WordProcessor::stem(const std::string &word)
 {
     sb_stemmer *stemmer = sb_stemmer_new("english", nullptr);
     if (!stemmer)
@@ -50,10 +50,24 @@ std::string WordProcessor::stem(std::string &word)
     return stemmed_word;
 }
 
-bool WordProcessor::isStopWord(std::string &word)
+bool WordProcessor::isStopWord(const std::string &word)
 {
     return WordProcessor::getStopWords().find(word) !=WordProcessor::getStopWords().end();
 
+}
+
+std::string WordProcessor::normalizeQuotedTerm(const std::string &text)
+{
+  std::string result = text;
+  return result.substr(1,result.size()-2);
+}
+
+bool WordProcessor::isQuotedTerm(const std::string &text)
+{
+      if(text[0]=='"'&&text[text.size()-1]=='"'){
+        return true;
+    }
+    return false;
 }
 
 const std::unordered_set<std::string> &WordProcessor::getStopWords()

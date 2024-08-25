@@ -6,7 +6,7 @@
 #include <queue>
 #include "InvertedIndex.h"
 #include "BM25Ranker.h"
-
+#include "WordProcessor.h"
 
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
@@ -19,22 +19,27 @@ static const double BM25K1 = 1.5;
 static const double BM25B = 0.75;
 
 static std::queue<std::string>seed_urls({
-
-	"https://www.bbc.com",
-    "https://www.cnn.com/",
-    "https://techcrunch.com/",
-    "https://www.wired.com/",
-    "https://www.nytimes.com/",
-    "https://arstechnica.com/",
-    "https://www.khanacademy.org/",
-    "https://www.coursera.org/",
-    "https://news.ycombinator.com/",
-    "https://www.medium.com/"
+	"http://localhost:3000/doc1",
+	"http://localhost:3000/doc2",
+	"http://localhost:3000/doc3",
+	"http://localhost:3000/doc4",
+	"http://localhost:3000/doc5"
+	// "https://www.bbc.com",
+    // "https://www.cnn.com/",
+    // "https://techcrunch.com/",
+    // "https://www.wired.com/",
+    // "https://www.nytimes.com/",
+    // "https://arstechnica.com/",
+    // "https://www.khanacademy.org/",
+    // "https://www.coursera.org/",
+    // "https://news.ycombinator.com/",
+    // "https://www.medium.com/"
 });
 
 int main(int argc, char*argv[])
 {
 	
+	for(auto ele:WordProcessor::tokenize("very fast"))std::cout<<ele<<',';std::cout<<'\n';
 	if (argc < 3) {
 		std::cerr << "Usage: " << argv[0] << " <MongoDB connection string>"
 			<< std::endl;
@@ -49,13 +54,13 @@ int main(int argc, char*argv[])
 	HTMLParser htmlParser{};
 	URLParser urlParser{seed_urls.front()};
 	WebCrawler webCrawler{ seed_urls ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
-	webCrawler.run(false);
+	webCrawler.run(true);
     
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
-	invertedIndex.run(false);
+	invertedIndex.run(true);
     
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex,BM25K1,BM25B};
-	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("Median salary and job opening data are sourced from United States");
+	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("\"very fast\"");
 	for(const auto&pair:documents){
 		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
 	}

@@ -11,10 +11,13 @@ class WordProcessor
 {
 public:
     static std::vector<std::string> tokenize(const std::string &content);
-    static bool isValidWord(std::string word);
-    static std::string normalize(std::string &token);
-    static std::string stem(std::string &word);
-    static bool isStopWord(std::string &word);
+    static bool isValidWord(const std::string word);
+    static std::string normalize(const std::string &token);
+    static std::string stem(const std::string &word);
+    static bool isStopWord(const std::string &word);
+    static std::string normalizeQuotedTerm(const std::string& text);
+    static bool isQuotedTerm(const std::string& text);
+
 private:
     static const std::unordered_set<std::string>& getStopWords();
 };
