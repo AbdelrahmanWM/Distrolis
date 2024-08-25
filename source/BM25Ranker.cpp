@@ -3,8 +3,19 @@
 #include <math.h>
 #include <algorithm>
 
-BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, const InvertedIndex &invertedIndex, double k1, double b)
-    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_k1(k1), m_b(b)
+double BM25Ranker::K1 = 1.5;          // Default value for K1
+double BM25Ranker::B = 0.75;          // Default ovalue for B
+double BM25Ranker::PHRASE_BOOST = 1.3; // Default value for PHRASE_BOOST
+
+void BM25Ranker::SetSearchEngineParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE)
+{
+    BM25Ranker::K1 = BM25_K1;
+    BM25Ranker::B = BM25_B;
+    BM25Ranker::PHRASE_BOOST = PHRASE_BOOST_VALUE;
+}
+
+BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, const InvertedIndex &invertedIndex)
+    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex)
 {
 }
 
@@ -14,18 +25,18 @@ std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &q
     {
         extractInvertedIndexAndMetadata();
         initializeDocumentScores();
-        if (WordProcessor::isQuotedTerm(query_string))
+        if (WordProcessor::isQuotedPhrase(query_string))
         {
-            std::cout<<"term: "<<query_string<<"\n";
-            calculateTermFrequencyMetadata(tokenizeQuery(WordProcessor::normalizeQuotedTerm(query_string)));
-            std::cout<<"term: "<<WordProcessor::normalizeQuotedTerm(query_string)<<'\n';
+            addDocumentsPhraseBoost(query_string);
         }
         std::vector<std::string> query_terms = tokenizeQuery(query_string);
         for (const auto &term : query_terms)
         {
             calculateBM25ScoreForTerm(term);
         }
-
+        if(WordProcessor::isQuotedPhrase(query_string)){
+            normalizePhraseBoostEffect();
+        }
         std::vector<std::pair<std::string, double>> documents = sortDocumentScores();
         return documents;
     }
@@ -34,6 +45,14 @@ std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &q
         std::cerr << ex.what() << '\n';
         return std::vector<std::pair<std::string, double>>();
     }
+}
+
+void BM25Ranker::addDocumentsPhraseBoost(const std::string& phrase)
+{
+    std::string normalizePhrase = WordProcessor::normalizeQuotedPhrase(std::move(phrase));
+    std::vector<std::string>phrase_vector = tokenizeQuery(std::move(normalizePhrase)); 
+    std::unordered_map<std::string,int> documentsMetadata= calculateTermFrequencyMetadata(std::move(phrase_vector));
+    calculateBM25ScoreForPhrase(std::move(documentsMetadata));
 }
 
 void BM25Ranker::extractInvertedIndexAndMetadata()
@@ -67,7 +86,7 @@ std::vector<std::string> BM25Ranker::tokenizeQuery(const std::string &query)
         term = WordProcessor::stem(term);
         // if (WordProcessor::isValidWord(term))
         // {
-            results.push_back(term);
+        results.push_back(term);
         // }
     }
     return results;
@@ -79,24 +98,47 @@ void BM25Ranker::calculateBM25ScoreForTerm(const std::string &term)
     const auto &term_freq = m_term_frequencies[term];
     const double totalDocuments = m_metadata_document.total_documents;
     const double docCount = static_cast<double>(term_freq.size());
-
-    double idf = std::log((totalDocuments - docCount + 0.5) / (docCount + 0.5) + 1);
+    double avgDocLength = m_metadata_document.average_doc_length;
 
     for (const auto &documentPair : term_freq)
     { // documentPair = {id, positions}
         const std::string &docID = documentPair.first;
         const std::vector<int> &positions = documentPair.second;
-
         double termFrequency = static_cast<double>(positions.size());
-
         double docLength = static_cast<double>(m_metadata_document.doc_lengths[docID]);
+        
+
+        m_documents_scores[docID] += calculateBM25(termFrequency, docLength, avgDocLength, totalDocuments, docCount);
+    }
+}
+
+void BM25Ranker::calculateBM25ScoreForPhrase(const std::unordered_map<std::string, int> &documentsMap)
+{
+    const double totalDocumentsCount = m_metadata_document.total_documents;
+    const double documentsCount = static_cast<double>(documentsMap.size());
         double avgDocLength = m_metadata_document.average_doc_length;
 
-        double docNorm = (1 - m_b) + m_b * (docLength / avgDocLength);
-        double tf = (termFrequency * (m_k1 + 1)) / (termFrequency + m_k1 * docNorm);
-
-        m_documents_scores[docID] += idf * tf;
+    for (const auto& documentPair:documentsMap){ // docId, phrase_freq
+        const std::string &docID = documentPair.first;
+        double docLength = static_cast<double>(m_metadata_document.doc_lengths[docID]);
+        double diminishingFactor = log(1 + documentPair.second);
+        m_documents_scores[docID] += BM25Ranker::PHRASE_BOOST * diminishingFactor*calculateBM25(documentPair.second,docLength,avgDocLength,totalDocumentsCount,documentsCount);
     }
+}
+
+void BM25Ranker::normalizePhraseBoostEffect()
+{
+    for(const auto& documentPair:m_documents_scores){
+        m_documents_scores[documentPair.first]=documentPair.second/(BM25Ranker::PHRASE_BOOST+1.0);
+    }
+}
+
+double BM25Ranker::calculateBM25(int termFrequency, int documentLength, double averageDocumentLength, int totalDocumentsCount, int termDocumentsCount)
+{
+    double idf = std::log((totalDocumentsCount - termDocumentsCount + 0.5) / (termDocumentsCount + 0.5) + 1);
+    double docNorm = (1 - BM25Ranker::B) + BM25Ranker::B * (documentLength / averageDocumentLength);
+    double tf = (termFrequency * (BM25Ranker::K1 + 1)) / (termFrequency + BM25Ranker::K1 * docNorm);
+    return idf * tf;
 }
 
 std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(const std::vector<std::string> &term_vector)
@@ -107,24 +149,20 @@ std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(
     {
         documentsMetadata[documentPair.first] = documentPair.second;
     }
-    std::cout<<"term size:"<<term_vector.size()<<"\n";
+    std::cout << "term size:" << term_vector.size() << "\n";
     for (const auto &term : term_vector)
     {
-        std::cout<<term<<'\n';
         for (const auto &documentPair : m_term_frequencies[term])
         {
             std::vector<int> positions;
             std::string documentId = documentPair.first;
             std::vector<int> wordOccurrences = documentPair.second;
-            std::cout<<documentId<<'\n';
-            
+
             for (int position : wordOccurrences)
             {
-                std::cout<<position<<'\n';
                 if (std::find(documentsMetadata[documentId].begin(), documentsMetadata[documentId].end(), position) != documentsMetadata[documentId].end())
                 {
-                    positions.push_back(position+1);
-                    std::cout<<"true\n";
+                    positions.push_back(position + 1);
                 }
             }
             documentsMetadata[documentId] = positions;
@@ -137,11 +175,11 @@ std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(
             documents[element.first] = element.second.size();
         }
     }
-    std::cout<<"Documents containing the phrase:\n";
-    for(const auto& element :documents){
-        std::cout<<element.first<<","<<element.second<<'\n';
-    }
-    std::cout<<"end\n";
+    // std::cout<<"Documents containing the phrase:\n";
+    // for(const auto& element :documents){
+    //     std::cout<<element.first<<","<<element.second<<'\n';
+    // }
+    // std::cout<<"end\n";
     return documents;
 }
 
@@ -153,6 +191,6 @@ std::vector<std::pair<std::string, double>> BM25Ranker::sortDocumentScores()
         sortedDocuments.push_back({pair.first, pair.second});
     }
     std::sort(sortedDocuments.begin(), sortedDocuments.end(), [](std::pair<std::string, double> pair1, std::pair<std::string, double> pair2)
-              { return pair1.second > pair2.second; });
+            { return pair1.second > pair2.second; });
     return sortedDocuments;
 }

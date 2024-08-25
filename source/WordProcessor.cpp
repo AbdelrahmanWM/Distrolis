@@ -56,13 +56,13 @@ bool WordProcessor::isStopWord(const std::string &word)
 
 }
 
-std::string WordProcessor::normalizeQuotedTerm(const std::string &text)
+std::string WordProcessor::normalizeQuotedPhrase(const std::string &text)
 {
   std::string result = text;
   return result.substr(1,result.size()-2);
 }
 
-bool WordProcessor::isQuotedTerm(const std::string &text)
+bool WordProcessor::isQuotedPhrase(const std::string &text)
 {
       if(text[0]=='"'&&text[text.size()-1]=='"'){
         return true;

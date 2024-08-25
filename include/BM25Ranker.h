@@ -7,13 +7,18 @@
 class BM25Ranker
 {
 public:
-    BM25Ranker(const std::string&database_name,const std::string&documents_collection_name,const InvertedIndex& invertedIndex,double k1,double b);
+    static void SetSearchEngineParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE);
+    BM25Ranker(const std::string&database_name,const std::string&documents_collection_name,const InvertedIndex& invertedIndex);
     std::vector<std::pair<std::string,double>> run(const std::string& query_string);
 
 private:
+    void addDocumentsPhraseBoost(const std::string& phrase);
     void extractInvertedIndexAndMetadata();
     void initializeDocumentScores();
     void calculateBM25ScoreForTerm(const std::string& term);
+    void calculateBM25ScoreForPhrase(const std::unordered_map<std::string,int>& documentsMap);
+    void normalizePhraseBoostEffect();
+    static double calculateBM25(int termFrequency,int documentLength,double averageDocumentLength,int totalDocumentsCount,int termDocumentsCount);
     std::unordered_map<std::string,int>calculateTermFrequencyMetadata(const std::vector<std::string>&term_vector);
     std::vector<std::pair<std::string,double>> sortDocumentScores();
     std::vector<std::string> tokenizeQuery(const std::string& query);
@@ -23,7 +28,8 @@ private:
     std::string m_database_name;
     std::string m_documents_collection_name;
     InvertedIndex m_invertedIndex;
-    double m_k1;
-    double m_b;
+    static double K1;
+    static double B;
+    static double PHRASE_BOOST;
 };
 #endif

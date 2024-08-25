@@ -17,6 +17,7 @@ static const int NUMBER_OF_PAGES = 5;
 static const bool USE_PROXY = false;
 static const double BM25K1 = 1.5;
 static const double BM25B = 0.75;
+static const double PHRASE_BOOST = 1.35;
 
 static std::queue<std::string>seed_urls({
 	"http://localhost:3000/doc1",
@@ -45,6 +46,8 @@ int main(int argc, char*argv[])
 			<< std::endl;
 		return EXIT_FAILURE;
 	}
+	BM25Ranker::SetSearchEngineParameters(BM25K1,BM25B,PHRASE_BOOST);
+
 	const std::string connectionString = argv[1];
 	const std::string proxyAPIUrl = argv[2];
 
@@ -59,8 +62,8 @@ int main(int argc, char*argv[])
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
 	invertedIndex.run(true);
     
-	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex,BM25K1,BM25B};
-	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("\"very fast\"");
+	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
+	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("\"quick brown fox\"");
 	for(const auto&pair:documents){
 		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
 	}

@@ -15,8 +15,8 @@ public:
     static std::string normalize(const std::string &token);
     static std::string stem(const std::string &word);
     static bool isStopWord(const std::string &word);
-    static std::string normalizeQuotedTerm(const std::string& text);
-    static bool isQuotedTerm(const std::string& text);
+    static std::string normalizeQuotedPhrase(const std::string& text);
+    static bool isQuotedPhrase(const std::string& text);
 
 private:
     static const std::unordered_set<std::string>& getStopWords();
