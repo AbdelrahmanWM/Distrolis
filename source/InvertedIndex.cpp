@@ -60,12 +60,12 @@ void InvertedIndex::addDocument(const std::string docId, std::string &content)
     {
         token = WordProcessor::normalize(tokens[i]);
         
-        if (WordProcessor::isStopWord(token))
-            continue;
+        // if (WordProcessor::isStopWord(token)) // Stop words will complicate phrase search
+        //     continue;
         token = WordProcessor::stem(token);
-        if(WordProcessor::isValidWord(token)){
-            m_index[token][docId].push_back(i);
-        }
+        // if(WordProcessor::isValidWord(token)){
+        m_index[token][docId].push_back(i);
+        // }
     }
 }
 

@@ -62,13 +62,13 @@ std::vector<std::string> BM25Ranker::tokenizeQuery(const std::string &query)
     {
         term = WordProcessor::normalize(terms[i]);
 
-        if (WordProcessor::isStopWord(term))
-            continue;
+        // if (WordProcessor::isStopWord(term))  // stop words will complicate phrase search
+        //     continue;
         term = WordProcessor::stem(term);
-        if (WordProcessor::isValidWord(term))
-        {
+        // if (WordProcessor::isValidWord(term))
+        // {
             results.push_back(term);
-        }
+        // }
     }
     return results;
 }
