@@ -1,5 +1,5 @@
 #include "WordProcessor.h"
-
+#include <iostream>
 std::vector<std::string> WordProcessor::tokenize(const std::string &content)
 {
     std::regex rgx{R"(\b[\w'-]+\b)"};
@@ -68,6 +68,39 @@ bool WordProcessor::isQuotedPhrase(const std::string &text)
         return true;
     }
     return false;
+}
+
+std::queue<std::pair<PhraseType,std::string>> WordProcessor::tokenizeQueryPhrases(const std::string& query)
+{
+    std::queue<std::pair<PhraseType,std::string>>results_queue{};
+
+    std::sregex_iterator end;
+
+    // auto process_match = [&](std::sregex_iterator& it, PhraseType type ){
+    //     while(it != end){
+    //         results_queue.push(std::make_pair(type,it->str()));
+    //         ++it;
+    //     }
+    // };
+
+    std::sregex_iterator it(query.begin(),query.end(),combined_pattern);
+    while (it!=end){
+        std::smatch match = *it;
+        if(match[2].matched){
+            results_queue.push(std::make_pair(PhraseType::PHRASE, match[2].str()));
+        }
+        else if (match[3].matched){
+            results_queue.push(std::make_pair(PhraseType::LOGICAL_OPERATION,match[3].str()));
+        }
+        else if(match[4].matched){
+            results_queue.push(std::make_pair(PhraseType::TERM,match[4].str()));
+        }
+        ++it;
+    }
+    
+   
+
+    return results_queue;
 }
 
 const std::unordered_set<std::string> &WordProcessor::getStopWords()
@@ -159,3 +192,5 @@ const std::unordered_set<std::string> &WordProcessor::getStopWords()
     };
     return stopWords;
 }
+
+

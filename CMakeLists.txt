@@ -22,6 +22,7 @@ set(SOURCES
     source/InvertedIndex.cpp
     source/WordProcessor.cpp
     source/BM25Ranker.cpp
+    source/PhraseTypes.cpp
 )
 
 # Add the executable

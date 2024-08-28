@@ -22,7 +22,7 @@ std::regex combined_pattern{
 // }
 
 LogicalOperation GetLogicalOperation(const std::string string)
-{
+{   
     std::regex and_pattern{R"(AND)", std::regex_constants::icase};
     std::regex or_pattern{R"(OR)", std::regex_constants::icase};
     std::regex not_pattern{R"(NOT)", std::regex_constants::icase};

@@ -7,6 +7,7 @@
 #include "InvertedIndex.h"
 #include "BM25Ranker.h"
 #include "WordProcessor.h"
+#include <iostream>
 
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
@@ -39,8 +40,7 @@ static std::queue<std::string>seed_urls({
 
 int main(int argc, char*argv[])
 {
-	
-	for(auto ele:WordProcessor::tokenize("very fast"))std::cout<<ele<<',';std::cout<<'\n';
+
 	if (argc < 3) {
 		std::cerr << "Usage: " << argv[0] << " <MongoDB connection string>"
 			<< std::endl;
@@ -63,7 +63,7 @@ int main(int argc, char*argv[])
 	invertedIndex.run(true);
     
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
-	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("\"quick brown fox\"");
+	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("quick fox quick fox fox brown quick quick fox fox brown brown .");
 	for(const auto&pair:documents){
 		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
 	}
