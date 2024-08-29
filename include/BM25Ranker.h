@@ -3,14 +3,14 @@
 #include<unordered_map>
 #include <queue>
 #include "InvertedIndex.h"
-
+#include <stack>
 #ifndef RANKER_H
 #define RANKER_H
 class BM25Ranker
 {
 public:
     typedef  std::unordered_map<std::string,double> ScoresDocument;
-    static void SetSearchEngineParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE);
+    static void SetSearchEngineParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
     BM25Ranker(const std::string&database_name,const std::string&documents_collection_name,const InvertedIndex& invertedIndex);
     std::vector<std::pair<std::string,double>> run(const std::string& query_string);
 
@@ -21,8 +21,9 @@ private:
     ScoresDocument documentNOTOperation(const ScoresDocument& operand);
     void documentPrintOperation(const ScoresDocument& operand);
     ScoresDocument documentsANDOperation(const ScoresDocument& operand1,const ScoresDocument& operand2);
-    ScoresDocument documentsADDOperation(const ScoresDocument& operand1,const ScoresDocument& operand2,bool operand1Boost = false);
+    ScoresDocument documentsADDOperation(const ScoresDocument& operand1,const ScoresDocument& operand2,double operand1Boost = 1, double operand2Boost=1);
     ScoresDocument documentsOROperation(const ScoresDocument& operand1,const ScoresDocument& operand2);
+    void documentsStackCombineOperation(std::stack<ScoresDocument> &documentsStack);    
     ScoresDocument documentNormalizeOperation(const ScoresDocument& operand);
     void extractInvertedIndexAndMetadata();
     ScoresDocument getEmptyScoresDocument();
@@ -41,6 +42,8 @@ private:
     std::queue<std::string> m_query_phrase_queue;
     static double K1;
     static double B;
+    static double TERM_FREQUENCY_WEIGHT;
+    static double EXACT_MATCH_WEIGHT;
     static double PHRASE_BOOST;
 };
 #endif

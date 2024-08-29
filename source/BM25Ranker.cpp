@@ -2,17 +2,21 @@
 #include "WordProcessor.h"
 #include <math.h>
 #include <algorithm>
-#include <stack>
+
 const double epsilon = 1e-5;
+double BM25Ranker::TERM_FREQUENCY_WEIGHT = 0.4;
+double BM25Ranker::EXACT_MATCH_WEIGHT = 0.6;
 double BM25Ranker::K1 = 1.5;           // Default value for K1
 double BM25Ranker::B = 0.75;           // Default ovalue for B
 double BM25Ranker::PHRASE_BOOST = 1.3; // Default value for PHRASE_BOOST
 
-void BM25Ranker::SetSearchEngineParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE)
+void BM25Ranker::SetSearchEngineParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT)
 {
     BM25Ranker::K1 = BM25_K1;
     BM25Ranker::B = BM25_B;
     BM25Ranker::PHRASE_BOOST = PHRASE_BOOST_VALUE;
+    BM25Ranker::EXACT_MATCH_WEIGHT = EXACT_MATCH_WEIGHT;
+    BM25Ranker::TERM_FREQUENCY_WEIGHT = 1 - EXACT_MATCH_WEIGHT;
 }
 
 BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, const InvertedIndex &invertedIndex)
@@ -39,30 +43,30 @@ std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &q
 
 BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
 {
+    try{
     std::stack<LogicalOperation> operations_stack{};
-    std::stack<std::unordered_map<std::string, double>> phrase_documents_scores_stack;
-    std::stack<std::unordered_map<std::string, double>> term_documents_scores_stack;
+    std::stack<ScoresDocument> phrase_documents_scores_stack;
+    std::stack<ScoresDocument> term_documents_scores_stack;
     std::queue<std::pair<PhraseType, std::string>> phrases_queue = WordProcessor::tokenizeQueryPhrases(query);
     LogicalOperation op = LogicalOperation::OTHER;
     LogicalOperation currentOp = LogicalOperation::OTHER;
-    std::unordered_map<std::string, double> operand1;
-    std::unordered_map<std::string, double> operand2;
-    std::unordered_map<std::string, double> result;
-
+    ScoresDocument operand1;
+    ScoresDocument operand2;
+    ScoresDocument result;
     phrases_queue.push(std::make_pair(PhraseType::LOGICAL_OPERATION, "!")); // Weak operator
     while (!phrases_queue.empty())
     {
         const auto &pair = phrases_queue.front();
         phrases_queue.pop();
+
         if (pair.first == PhraseType::LOGICAL_OPERATION)
         {
-
             if (!operations_stack.empty())
             {
                 op = operations_stack.top();
                 currentOp = GetLogicalOperation(pair.second);
                 // std::cout<<"Current operation "<<(int)currentOp<<"\n";
-                while (op <= currentOp && currentOp!=LogicalOperation::OPENING_BRACKET)
+                while (op <= currentOp && currentOp != LogicalOperation::OPENING_BRACKET)
                 {
                     operations_stack.pop();
                     if (op == LogicalOperation::NOT)
@@ -74,7 +78,6 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                     }
                     else if (op == LogicalOperation::AND)
                     {
-
                         operand1 = phrase_documents_scores_stack.top();
                         phrase_documents_scores_stack.pop();
                         operand2 = phrase_documents_scores_stack.top();
@@ -84,8 +87,6 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                     }
                     else if (op == LogicalOperation::OR)
                     {
-                        
-
                         operand1 = phrase_documents_scores_stack.top();
                         phrase_documents_scores_stack.pop();
                         operand2 = phrase_documents_scores_stack.top();
@@ -93,19 +94,19 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                         result = documentsOROperation(std::move(operand1), std::move(operand2));
                         phrase_documents_scores_stack.push(result);
                     }
-                    else  {
+                    else
+                    {
                         break;
                     }
-                    if(operations_stack.empty())break;
+                    if (operations_stack.empty())
+                        break;
                     op = operations_stack.top();
                 }
-
-                if(currentOp!=LogicalOperation::CLOSING_BRACKET)operations_stack.push(currentOp);
-
+                if (currentOp != LogicalOperation::CLOSING_BRACKET)
+                    operations_stack.push(currentOp);
             }
             else
             {
-
                 operations_stack.push(GetLogicalOperation(pair.second));
             }
         }
@@ -115,7 +116,8 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
         }
         else if (pair.first == PhraseType::TERM)
         {
-            term_documents_scores_stack.push(calculateTermScore(pair.second));
+            ScoresDocument result = calculateTermScore(pair.second);
+            term_documents_scores_stack.push(std::move(result));
         }
         else
         {
@@ -124,28 +126,13 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
     }
     if (!term_documents_scores_stack.empty())
     {
-
-        BM25Ranker::ScoresDocument result{term_documents_scores_stack.top()};
-        term_documents_scores_stack.pop();
-        while (!term_documents_scores_stack.empty())
-        {
-            result = documentsADDOperation(std::move(result), std::move(term_documents_scores_stack.top()));
-            term_documents_scores_stack.pop();
-        }
-        result = documentNormalizeOperation(std::move(result));
-        term_documents_scores_stack.push(result);
+        documentsStackCombineOperation(term_documents_scores_stack);
     }
     if (!phrase_documents_scores_stack.empty())
     {
-        BM25Ranker::ScoresDocument result{phrase_documents_scores_stack.top()};
-        phrase_documents_scores_stack.pop();
-        while (!phrase_documents_scores_stack.empty())
-        {
-            result = documentsANDOperation(std::move(result), std::move(phrase_documents_scores_stack.top()));
-            phrase_documents_scores_stack.pop();
-        }
-        phrase_documents_scores_stack.push(result);
+        documentsStackCombineOperation(phrase_documents_scores_stack);
     }
+
     if (term_documents_scores_stack.empty())
     {
         return phrase_documents_scores_stack.top();
@@ -156,12 +143,36 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
     }
     else
     {
-        return documentNormalizeOperation(documentsADDOperation(phrase_documents_scores_stack.top(), term_documents_scores_stack.top(), true));
+        ScoresDocument boostedPhraseScore = documentsADDOperation(phrase_documents_scores_stack.top(), phrase_documents_scores_stack.top(), PHRASE_BOOST, 0);
+        term_documents_scores_stack.push(boostedPhraseScore); // Adding them in one stack to apply the combine operation on them
+        documentsStackCombineOperation(term_documents_scores_stack);
+        return documentNormalizeOperation(term_documents_scores_stack.top());
+    }
+    }catch(std::exception& ex){
+        std::cerr<<"Failed to process query: "<<ex.what();
     }
 }
-
+void BM25Ranker::documentsStackCombineOperation(std::stack<ScoresDocument> &documentsStack)
+{
+    try{
+        BM25Ranker::ScoresDocument termFrequency{documentsStack.top()}, exactMatch{documentsStack.top()};
+        documentsStack.pop();
+        while (!documentsStack.empty())
+        {
+            termFrequency = documentsADDOperation(std::move(termFrequency), documentsStack.top());
+            exactMatch = documentsANDOperation(std::move(exactMatch), documentsStack.top());
+            documentsStack.pop();
+        }
+        termFrequency = documentNormalizeOperation(std::move(termFrequency));
+        ScoresDocument result = documentsADDOperation(termFrequency, exactMatch, BM25Ranker::TERM_FREQUENCY_WEIGHT, BM25Ranker::EXACT_MATCH_WEIGHT);
+        documentsStack.push(std::move(result));
+    }catch(std::exception& ex){
+        std::cerr<<"Failed to combine documents: "<<ex.what();
+    }
+    
+}
 BM25Ranker::ScoresDocument BM25Ranker::calculatePhraseScore(const std::string &phrase)
-{   
+{
     // std::string normalizePhrase = WordProcessor::normalizeQuotedPhrase(std::move(phrase));
     // std::cout<<normalizePhrase<<"___\n";
     std::vector<std::string> phrase_vector = tokenizeQuery(std::move(phrase));
@@ -189,15 +200,15 @@ BM25Ranker::ScoresDocument BM25Ranker::documentNOTOperation(const ScoresDocument
 
 void BM25Ranker::documentPrintOperation(const ScoresDocument &operand)
 {
-    std::cout<<"Document:\n";
-    for (const auto& pair: operand){
-        std::cout<<pair.first<<", "<<pair.second<<'\n';
+    std::cout << "Document:\n";
+    for (const auto &pair : operand)
+    {
+        std::cout << pair.first << ", " << pair.second << '\n';
     }
 }
 
 BM25Ranker::ScoresDocument BM25Ranker::documentsANDOperation(const ScoresDocument &operand1, const ScoresDocument &operand2)
 {
-
 
     BM25Ranker::ScoresDocument result;
     for (const auto &document : operand1)
@@ -209,19 +220,15 @@ BM25Ranker::ScoresDocument BM25Ranker::documentsANDOperation(const ScoresDocumen
     return result;
 }
 
-BM25Ranker::ScoresDocument BM25Ranker::documentsADDOperation(const ScoresDocument &operand1, const ScoresDocument &operand2, bool operand1Boost)
+BM25Ranker::ScoresDocument BM25Ranker::documentsADDOperation(const ScoresDocument &operand1, const ScoresDocument &operand2, double operand1Boost, double operand2Boost)
 {
-    double operandBoost{1};
-    if (operand1Boost)
-    {
-        operandBoost = PHRASE_BOOST;
-    }
+
     BM25Ranker::ScoresDocument result;
     for (const auto &document : operand1)
     {
         double score2 = operand2.at(document.first);
 
-        double addition = operandBoost * document.second + score2;
+        double addition = operand1Boost * document.second + operand2Boost * score2;
         result[document.first] = addition;
     }
 
@@ -252,12 +259,12 @@ BM25Ranker::ScoresDocument BM25Ranker::documentNormalizeOperation(const ScoresDo
         result[document.first] = document.second;
     }
 
-    if(max>0)
-    for (auto &document : result)
-    {
+    if (max > 0)
+        for (auto &document : result)
+        {
 
-        document.second /= max;
-    }
+            document.second /= max;
+        }
     return result;
 }
 
@@ -319,12 +326,12 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForTerm(const std::stri
         scores_document[docID] = bm25Score;
     }
 
-    if(maximum>0)
-    for (auto &document : scores_document)
-    { // normalizing the scores between 0 -> 1
-        // document.second = (document.second+epsilon) / (maximum+epsilon);
-        document.second = document.second / maximum;
-    }
+    if (maximum > 0)
+        for (auto &document : scores_document)
+        { // normalizing the scores between 0 -> 1
+            // document.second = (document.second+epsilon) / (maximum+epsilon);
+            document.second = document.second / maximum;
+        }
 
     return scores_document;
 }
@@ -339,7 +346,7 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForPhrase(const std::un
 
     for (const auto &documentPair : documentsMap)
     { // docId, phrase_freq
-    
+
         const std::string &docID = documentPair.first;
         double docLength = static_cast<double>(m_metadata_document.doc_lengths[docID]);
         // double diminishingFactor = log(1 + documentPair.second);
@@ -348,15 +355,14 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForPhrase(const std::un
         maximum = std::max(maximum, bm25Score);
         // m_documents_scores[docID] += BM25Ranker::PHRASE_BOOST * diminishingFactor*calculateBM25(documentPair.second,docLength,avgDocLength,totalDocumentsCount,documentsCount);
         scores_document[docID] = bm25Score;
-
     }
 
-    if(maximum>0)
-    for (auto &document : scores_document)
-    { // normalizing the scores between 0 -> 1
-        // document.second = (document.second+epsilon) / (maximum+epsilon);
-        document.second = document.second / maximum;
-    }
+    if (maximum > 0)
+        for (auto &document : scores_document)
+        { // normalizing the scores between 0 -> 1
+            // document.second = (document.second+epsilon) / (maximum+epsilon);
+            document.second = document.second / maximum;
+        }
 
     return scores_document;
 }

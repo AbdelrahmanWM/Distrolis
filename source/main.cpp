@@ -14,11 +14,12 @@ static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string VISITED_URLS_COLLECTION = "VisitedUrls";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
 static const std::string METADATA_COLLECTION="Metadata";
-static const int NUMBER_OF_PAGES = 30;
+static const int NUMBER_OF_PAGES = 10;
 static const bool USE_PROXY = false;
 static const double BM25K1 = 1.5;
 static const double BM25B = 0.75;
 static const double PHRASE_BOOST = 1.35;
+static const double EXACT_MATCH_WEIGHT = 0.6;
 
 static std::queue<std::string>seed_urls({
 	// "http://localhost:3000/doc1",
@@ -46,7 +47,7 @@ int main(int argc, char*argv[])
 			<< std::endl;
 		return EXIT_FAILURE;
 	}
-	BM25Ranker::SetSearchEngineParameters(BM25K1,BM25B,PHRASE_BOOST);
+	BM25Ranker::SetSearchEngineParameters(BM25K1,BM25B,PHRASE_BOOST,EXACT_MATCH_WEIGHT);
 
 	const std::string connectionString = argv[1];
 	const std::string proxyAPIUrl = argv[2];
@@ -63,7 +64,7 @@ int main(int argc, char*argv[])
 	invertedIndex.run(false);
     
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
-	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("Servette israel khan");
+	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("(\"BBC news\" or \"CNN\") not \"England\"");
 	for(const auto&pair:documents){
 		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
 	}
