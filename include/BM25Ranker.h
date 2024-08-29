@@ -19,6 +19,7 @@ private:
     ScoresDocument calculatePhraseScore(const std::string& phrase);
     ScoresDocument calculateTermScore(const std::string& term);
     ScoresDocument documentNOTOperation(const ScoresDocument& operand);
+    void documentPrintOperation(const ScoresDocument& operand);
     ScoresDocument documentsANDOperation(const ScoresDocument& operand1,const ScoresDocument& operand2);
     ScoresDocument documentsADDOperation(const ScoresDocument& operand1,const ScoresDocument& operand2,bool operand1Boost = false);
     ScoresDocument documentsOROperation(const ScoresDocument& operand1,const ScoresDocument& operand2);

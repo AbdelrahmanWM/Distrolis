@@ -123,7 +123,8 @@ std::string HTMLParser::extractElement(const htmlDocPtr& doc, const xmlXPathCont
         }
         else
         {
-            std::cerr << "No matching element found for XPath: " << xpathExpr << std::endl;
+            
+            // std::cerr << "No matching element found for XPath: " << xpathExpr << std::endl;
         }
     }
     catch (std::exception &ex)

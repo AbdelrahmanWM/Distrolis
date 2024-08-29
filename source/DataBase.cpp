@@ -56,7 +56,7 @@ void DataBase::destroyInstance()
 
 void DataBase::insertDocument(const bson_t *document,const std::string& database_name, const std::string &collection_name) const
 {
-    std::cout << document << "\n";
+    
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     bool insertSuccess = false;

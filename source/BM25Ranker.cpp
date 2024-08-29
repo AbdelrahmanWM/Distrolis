@@ -3,7 +3,7 @@
 #include <math.h>
 #include <algorithm>
 #include <stack>
-
+const double epsilon = 1e-5;
 double BM25Ranker::K1 = 1.5;           // Default value for K1
 double BM25Ranker::B = 0.75;           // Default ovalue for B
 double BM25Ranker::PHRASE_BOOST = 1.3; // Default value for PHRASE_BOOST
@@ -56,15 +56,13 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
         phrases_queue.pop();
         if (pair.first == PhraseType::LOGICAL_OPERATION)
         {
-            std::cout<<"HERE\n";
+
             if (!operations_stack.empty())
             {
                 op = operations_stack.top();
-                std::cout<<"op "<<(int)op<<'\n';
                 currentOp = GetLogicalOperation(pair.second);
-                std::cout<<"curr "<<(int)currentOp<<"\n";
                 // std::cout<<"Current operation "<<(int)currentOp<<"\n";
-                while (op <= currentOp)
+                while (op <= currentOp && currentOp!=LogicalOperation::OPENING_BRACKET)
                 {
                     operations_stack.pop();
                     if (op == LogicalOperation::NOT)
@@ -76,6 +74,7 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                     }
                     else if (op == LogicalOperation::AND)
                     {
+
                         operand1 = phrase_documents_scores_stack.top();
                         phrase_documents_scores_stack.pop();
                         operand2 = phrase_documents_scores_stack.top();
@@ -85,7 +84,7 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                     }
                     else if (op == LogicalOperation::OR)
                     {
-            std::cout<<"HERE OR\n";
+                        
 
                         operand1 = phrase_documents_scores_stack.top();
                         phrase_documents_scores_stack.pop();
@@ -94,15 +93,19 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
                         result = documentsOROperation(std::move(operand1), std::move(operand2));
                         phrase_documents_scores_stack.push(result);
                     }
+                    else  {
+                        break;
+                    }
                     if(operations_stack.empty())break;
                     op = operations_stack.top();
                 }
 
-                operations_stack.push(currentOp);
+                if(currentOp!=LogicalOperation::CLOSING_BRACKET)operations_stack.push(currentOp);
 
             }
             else
             {
+
                 operations_stack.push(GetLogicalOperation(pair.second));
             }
         }
@@ -145,17 +148,14 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
     }
     if (term_documents_scores_stack.empty())
     {
-        std::cout<<"ONLY PHRASES\n";
         return phrase_documents_scores_stack.top();
     }
     else if (phrase_documents_scores_stack.empty())
     {
-        std::cout<<"ONLY TERMS\n";
         return term_documents_scores_stack.top();
     }
     else
     {
-        std::cout<<"BOTH\n";
         return documentNormalizeOperation(documentsADDOperation(phrase_documents_scores_stack.top(), term_documents_scores_stack.top(), true));
     }
 }
@@ -176,23 +176,36 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateTermScore(const std::string &ter
 
 BM25Ranker::ScoresDocument BM25Ranker::documentNOTOperation(const ScoresDocument &operand)
 {
+
     BM25Ranker::ScoresDocument result;
     for (const auto &document : operand)
     {
 
         result[document.first] = 1 - document.second;
     }
+
     return result;
+}
+
+void BM25Ranker::documentPrintOperation(const ScoresDocument &operand)
+{
+    std::cout<<"Document:\n";
+    for (const auto& pair: operand){
+        std::cout<<pair.first<<", "<<pair.second<<'\n';
+    }
 }
 
 BM25Ranker::ScoresDocument BM25Ranker::documentsANDOperation(const ScoresDocument &operand1, const ScoresDocument &operand2)
 {
+
+
     BM25Ranker::ScoresDocument result;
     for (const auto &document : operand1)
     {
         double score2 = operand2.at(document.first);
         result[document.first] = std::min(document.second, score2);
     }
+
     return result;
 }
 
@@ -217,7 +230,7 @@ BM25Ranker::ScoresDocument BM25Ranker::documentsADDOperation(const ScoresDocumen
 
 BM25Ranker::ScoresDocument BM25Ranker::documentsOROperation(const ScoresDocument &operand1, const ScoresDocument &operand2)
 {
-    std::cout<<"are we even here\n";
+
     BM25Ranker::ScoresDocument result;
     for (const auto &document : operand1)
     {
@@ -225,6 +238,7 @@ BM25Ranker::ScoresDocument BM25Ranker::documentsOROperation(const ScoresDocument
         // std::cout<<"->"<<document.second<<","<<score2<<'\n';
         result[document.first] = std::max(document.second, score2);
     }
+
     return result;
 }
 
@@ -237,10 +251,10 @@ BM25Ranker::ScoresDocument BM25Ranker::documentNormalizeOperation(const ScoresDo
         max = std::max(max, document.second);
         result[document.first] = document.second;
     }
-    std::cout<<"max: "<<max<<'\n';
+
     if(max>0)
     for (auto &document : result)
-    {std::cout<<document.second<<"\n";
+    {
 
         document.second /= max;
     }
@@ -304,11 +318,14 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForTerm(const std::stri
         maximum = std::max(maximum, bm25Score);
         scores_document[docID] = bm25Score;
     }
+
     if(maximum>0)
     for (auto &document : scores_document)
     { // normalizing the scores between 0 -> 1
+        // document.second = (document.second+epsilon) / (maximum+epsilon);
         document.second = document.second / maximum;
     }
+
     return scores_document;
 }
 
@@ -331,12 +348,16 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForPhrase(const std::un
         maximum = std::max(maximum, bm25Score);
         // m_documents_scores[docID] += BM25Ranker::PHRASE_BOOST * diminishingFactor*calculateBM25(documentPair.second,docLength,avgDocLength,totalDocumentsCount,documentsCount);
         scores_document[docID] = bm25Score;
+
     }
+
     if(maximum>0)
     for (auto &document : scores_document)
     { // normalizing the scores between 0 -> 1
+        // document.second = (document.second+epsilon) / (maximum+epsilon);
         document.second = document.second / maximum;
     }
+
     return scores_document;
 }
 

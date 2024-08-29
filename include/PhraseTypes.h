@@ -16,6 +16,8 @@ enum class LogicalOperation {
     NOT,
     AND,
     OR,
+    OPENING_BRACKET,
+    CLOSING_BRACKET,
     OTHER
 };
 
