@@ -2,16 +2,11 @@
 
 std::vector<std::string> WebCrawler::proxiesList;
 
-WebCrawler::WebCrawler(std::queue<std::string> &seed_urls, int max_pages, const DataBase *&database, const HTMLParser &parser, URLParser &urlParser, const std::string &database_name, const std::string &collection_name, const std::string &visitedUrls_collection_name, const bool useProxy, const std::string &proxyAPIUrl)
-	: m_db(database), m_parser(parser), m_urlParser(urlParser), m_max_pages_to_crawl(max_pages), m_frontier(), m_crawled_pages{}, m_visitedUrls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_visitedUrls_collection_name(visitedUrls_collection_name), m_useProxy(useProxy)
+WebCrawler::WebCrawler( const DataBase *&database, const HTMLParser &parser, URLParser &urlParser, const std::string &database_name, const std::string &collection_name, const std::string &visitedUrls_collection_name, const bool useProxy, const std::string &proxyAPIUrl)
+	: m_db(database), m_parser(parser), m_urlParser(urlParser), m_frontier(), m_crawled_pages{}, m_visitedUrls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_visitedUrls_collection_name(visitedUrls_collection_name), m_useProxy(useProxy)
 {
-
-	if (useProxy)
+	if (useProxy){
 		fetchProxies(proxyAPIUrl);
-	while (!seed_urls.empty())
-	{
-		m_frontier.push(m_urlParser.normalizeURL(seed_urls.front()));
-		seed_urls.pop();
 	}
 }
 
@@ -19,13 +14,15 @@ WebCrawler::~WebCrawler()
 {
 }
 
-void WebCrawler::run(bool clear)
+void WebCrawler::run(std::queue<std::string>& seedUrls, int maximumNumberOfPagesToCrawl, bool clear)
 {
+	addSeedUrls(seedUrls);
+	curl_global_init(CURL_GLOBAL_ALL);
 	if (!clear)
 	{
 		retrieveVisitedUrls();
 	}
-	while (!m_frontier.empty() && m_crawled_pages.size() < static_cast<size_t>(m_max_pages_to_crawl))
+	while (!m_frontier.empty() && m_crawled_pages.size() < static_cast<size_t>(maximumNumberOfPagesToCrawl))
 	{
 		const std::string &url = m_frontier.front();
 		m_urlParser.setBaseURL(url);
@@ -42,8 +39,8 @@ void WebCrawler::run(bool clear)
 		std::string htmlContent = fetchPage(url, m_useProxy);
 		parsePage(htmlContent, url);
 		m_frontier.pop();
-		std::cout << "m_frontier: " << m_frontier.size() << '\n';
-		std::cout << "Pages fetched: " << m_crawled_pages.size() << '\n';
+		std::cout << "frontier: " << m_frontier.size() << '\n';
+		std::cout << "pages fetched: " << m_crawled_pages.size() << '\n';
 	}
 	if (clear)
 	{
@@ -53,8 +50,17 @@ void WebCrawler::run(bool clear)
 	if(m_crawled_pages.size()>0){
 		m_db->insertManyDocuments(m_crawled_pages, m_database_name, m_collection_name);
 	}
-	std::cout<<"visitedUrls: "<<m_visitedUrls.size()<<'\n';
+	std::cout<<"visited urls: "<<m_visitedUrls.size()<<'\n';
 	saveVisitedUrls();
+	curl_global_cleanup();
+}
+void WebCrawler::addSeedUrls(std::queue<std::string> &seedUrls)
+{
+	while (!seedUrls.empty())
+	{
+		m_frontier.push(m_urlParser.normalizeURL(seedUrls.front()));
+		seedUrls.pop();
+	}
 }
 void WebCrawler::parsePage(const std::string &htmlContent, const std::string &url)
 {
@@ -267,8 +273,20 @@ void WebCrawler::retrieveVisitedUrls()
 	}
 }
 
+void WebCrawler::setDatabaseName(const std::string &databaseName)
+{
+	m_database_name=databaseName;
+}
 
+void WebCrawler::setDocumentsCollectionName(const std::string &collectionName)
+{
+	m_collection_name = collectionName;
+}
 
+void WebCrawler::setVisitedUrlCollectionName(const std::string &collectionName)
+{
+	m_visitedUrls_collection_name = collectionName;
+}
 
 std::string WebCrawler::getRandomProxy()
 {

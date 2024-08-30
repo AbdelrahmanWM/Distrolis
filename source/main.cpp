@@ -1,13 +1,9 @@
 #include <iostream>
-#include "WebCrawler.h"
-#include "DataBase.h"
-#include "HTMLParser.h"
-#include "URLParser.h"
-#include <queue>
-#include "InvertedIndex.h"
-#include "BM25Ranker.h"
-#include "WordProcessor.h"
+#include "SearchEngine.h"
 #include <iostream>
+#include "SearchEngineServer.h"
+
+
 
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
@@ -47,28 +43,29 @@ int main(int argc, char*argv[])
 			<< std::endl;
 		return EXIT_FAILURE;
 	}
-	BM25Ranker::SetSearchEngineParameters(BM25K1,BM25B,PHRASE_BOOST,EXACT_MATCH_WEIGHT);
-
+	
 	const std::string connectionString = argv[1];
 	const std::string proxyAPIUrl = argv[2];
-
+	BM25Ranker::setRankerParameters(BM25K1,BM25B,PHRASE_BOOST,EXACT_MATCH_WEIGHT);
 	const DataBase* db = DataBase::getInstance(connectionString);
-	
-	curl_global_init(CURL_GLOBAL_ALL);
 	HTMLParser htmlParser{};
 	URLParser urlParser{seed_urls.front()};
-	WebCrawler webCrawler{ seed_urls ,NUMBER_OF_PAGES,db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
-	webCrawler.run(false);
-    
+	WebCrawler webCrawler{db,htmlParser,urlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
-	invertedIndex.run(false);
-    
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
-	std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("(\"BBC news\" or \"CNN\") not \"England\"");
+    SearchEngine engine{webCrawler,invertedIndex,bm25Ranker};
+	engine.crawl(seed_urls,10,true);
+	std::vector<std::pair<std::string,double>> documents = engine.search("(\"BBC news\" or \"CNN\") not \"England\"");
+	// webCrawler.run(seed_urls,NUMBER_OF_PAGES,true);
+	// invertedIndex.run(true);
+
+    
+	// std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("(\"BBC news\" or \"CNN\") not \"England\"");
 	for(const auto&pair:documents){
 		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
 	}
-	curl_global_cleanup();
+	// SearchEngineServer server{};
+	// server.start();
 }
 //CURL* curl;
 //CURLcode res;

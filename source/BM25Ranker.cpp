@@ -10,7 +10,7 @@ double BM25Ranker::K1 = 1.5;           // Default value for K1
 double BM25Ranker::B = 0.75;           // Default ovalue for B
 double BM25Ranker::PHRASE_BOOST = 1.3; // Default value for PHRASE_BOOST
 
-void BM25Ranker::SetSearchEngineParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT)
+void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT)
 {
     BM25Ranker::K1 = BM25_K1;
     BM25Ranker::B = BM25_B;
@@ -365,6 +365,18 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForPhrase(const std::un
         }
 
     return scores_document;
+}
+
+void BM25Ranker::setDatabaseName(const std::string &databaseName)
+{
+    m_database_name = databaseName;
+    m_invertedIndex.setDatabaseName(databaseName);
+}
+
+void BM25Ranker::setDocumentsCollectionName(const std::string &collectionName)
+{
+    m_documents_collection_name = collectionName;
+    m_invertedIndex.setDocumentsCollectionName(collectionName);
 }
 
 // void BM25Ranker::normalizePhraseBoostEffect()

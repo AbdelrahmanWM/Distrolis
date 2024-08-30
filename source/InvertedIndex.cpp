@@ -208,6 +208,26 @@ void InvertedIndex::updateMetadataDocument()
     }
 }
 
+void InvertedIndex::setDatabaseName(const std::string &databaseName)
+{
+    m_database_name = databaseName;
+}
+
+void InvertedIndex::setInvertedIndexCollectionName(const std::string &collectionName)
+{
+    m_collection_name = collectionName;
+}
+
+void InvertedIndex::setDocumentsCollectionName(const std::string &collectionName)
+{
+    m_documents_collection_name = collectionName;
+}
+
+void InvertedIndex::setMetadataCollectionName(const std::string &collectionName)
+{
+    m_metadata_collection_name = collectionName;
+}
+
 double InvertedIndex::getAverageDocumentSize(const document_metadata &document)
 {
     double sum=0.0;

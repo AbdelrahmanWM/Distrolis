@@ -27,6 +27,10 @@ public:
             document_metadata() : total_documents(0), average_doc_length(0.0) {}
         };
     document_metadata getMetadataDocument(); 
+    void setDatabaseName(const std::string& databaseName);
+    void setInvertedIndexCollectionName(const std::string& collectionName);
+    void setDocumentsCollectionName(const std::string& collectionName);
+    void setMetadataCollectionName(const std::string& collectionName);
 private:
     
     void addDocument(const std::string docId, std::string &content);
@@ -35,15 +39,16 @@ private:
     void saveInvertedIndex();
     void saveMetadataDocument();
     void updateMetadataDocument();
+    
     static double getAverageDocumentSize(const document_metadata& document);
     std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>> m_index;
     document_metadata m_document_metadata;
     document_metadata m_iteration_metadata;
     const DataBase *&m_db;
-    const std::string m_database_name;
-    const std::string m_collection_name;
-    const std::string m_documents_collection_name;
-    const std::string m_metadata_collection_name;
+    std::string m_database_name;
+    std::string m_collection_name;
+    std::string m_documents_collection_name;
+    std::string m_metadata_collection_name;
   
 };
 

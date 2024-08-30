@@ -10,10 +10,11 @@ class BM25Ranker
 {
 public:
     typedef  std::unordered_map<std::string,double> ScoresDocument;
-    static void SetSearchEngineParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
+    static void setRankerParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
     BM25Ranker(const std::string&database_name,const std::string&documents_collection_name,const InvertedIndex& invertedIndex);
     std::vector<std::pair<std::string,double>> run(const std::string& query_string);
-
+    void setDatabaseName(const std::string&databaseName);
+    void setDocumentsCollectionName(const std::string&collectionName);
 private:
     ScoresDocument ProcessQuery(const std::string& query);
     ScoresDocument calculatePhraseScore(const std::string& phrase);
@@ -29,6 +30,7 @@ private:
     ScoresDocument getEmptyScoresDocument();
     ScoresDocument calculateBM25ScoreForTerm(const std::string& term);
     ScoresDocument calculateBM25ScoreForPhrase(const std::unordered_map<std::string,int>& documentsMap);
+    
     // void normalizePhraseBoostEffect();
     static double calculateBM25(int termFrequency,int documentLength,double averageDocumentLength,int totalDocumentsCount,int termDocumentsCount);
     std::unordered_map<std::string,int>calculateTermFrequencyMetadata(const std::vector<std::string>&term_vector);

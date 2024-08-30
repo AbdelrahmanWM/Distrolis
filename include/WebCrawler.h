@@ -12,11 +12,14 @@
 
 class WebCrawler {
 public:
-	WebCrawler(std::queue<std::string>& seed_urls, int max_pages,const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name, const std::string& visitedUrls_collection_name,const bool useProxy,const std::string& proxyAPIUrl="");
+	WebCrawler(const DataBase*& database,const HTMLParser& parser,URLParser& urlParser,const std::string& database_name, const std::string& collection_name, const std::string& visitedUrls_collection_name,const bool useProxy,const std::string& proxyAPIUrl="");
 	~WebCrawler();
-	void run(bool clear = false);
-
+	void run(std::queue<std::string>& seedUrls, int maximumNumberOfPagesToCrawl, bool clear = false);
+ 	void setDatabaseName(const std::string& databaseName);
+	void setDocumentsCollectionName(const std::string& collectionName);
+	void setVisitedUrlCollectionName(const std::string& collectionName);
 private: 
+	void addSeedUrls(std::queue<std::string>& seedUrls);
 	void parsePage(const std::string& htmlContent, const std::string& url);
 	std::string fetchPage(const std::string& url,bool useProxy=true);
 	static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
@@ -29,17 +32,16 @@ private:
 	void markURLAsVisited(const std::string& absoluteURL);
 	void saveVisitedUrls();
 	void retrieveVisitedUrls();
-
+   
 	const DataBase*& m_db;
 	const HTMLParser& m_parser;
 	URLParser& m_urlParser;
-	int m_max_pages_to_crawl;
 	std::queue<std::string> m_frontier;
 	std::vector<bson_t*> m_crawled_pages;
 	std::unordered_set<size_t> m_visitedUrls;
-	const std::string m_database_name;
-	const std::string m_collection_name; 
-	const std::string m_visitedUrls_collection_name;
+	std::string m_database_name;
+	std::string m_collection_name; 
+	std::string m_visitedUrls_collection_name;
 	const bool m_useProxy;
 	static std::vector<std::string> proxiesList;
 
