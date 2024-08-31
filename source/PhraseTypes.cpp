@@ -2,7 +2,7 @@
 
 
 std::regex combined_pattern{
-    R"((\"(.*?)\")|(AND|OR|NOT|\(|\))|([^\s"]+))",
+    R"((\"{1,})(.*?)\1|(AND|OR|NOT|\(|\))|([^\s"]+))",
     std::regex_constants::icase
 };
 

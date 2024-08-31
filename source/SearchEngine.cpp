@@ -12,6 +12,12 @@ SearchEngine::SearchResultsDocument SearchEngine::search(const std::string searc
     return m_ranker.run(search_query);
 }
 
+void SearchEngine::crawlAndIndexDocuments(std::queue<std::string> &seedUrls, int maximumNumberOfPages, bool clearHistory)
+{
+    crawl(seedUrls,maximumNumberOfPages,clearHistory);
+    indexDocuments(clearHistory);
+}
+
 void SearchEngine::crawl(std::queue<std::string>& seedUrls,int maximumNumberOfPages,bool clearPreviouslyCrawledPages)
 {
 

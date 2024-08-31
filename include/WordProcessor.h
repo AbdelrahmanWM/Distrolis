@@ -20,6 +20,7 @@ public:
     static std::string normalizeQuotedPhrase(const std::string& text);
     static bool isQuotedPhrase(const std::string& text);
     static std::queue<std::pair<PhraseType,std::string>>tokenizeQueryPhrases(const std::string& query);
+    static std::queue<std::string> extractSeedUrlsFromString(const std::string &string);
 
 private:
     static const std::unordered_set<std::string>& getStopWords();

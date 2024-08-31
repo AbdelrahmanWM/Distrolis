@@ -22,16 +22,16 @@ void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRAS
 BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, const InvertedIndex &invertedIndex)
     : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{}
 {
+    extractInvertedIndexAndMetadata();
 }
 
 std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &query_string)
 {
     try
     {
-        extractInvertedIndexAndMetadata();
-
         BM25Ranker::ScoresDocument scores_document = ProcessQuery(query_string);
         std::vector<std::pair<std::string, double>> documents = sortDocumentScores(scores_document);
+
         return documents;
     }
     catch (std::exception &ex)
@@ -43,118 +43,126 @@ std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &q
 
 BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
 {
-    try{
-    std::stack<LogicalOperation> operations_stack{};
-    std::stack<ScoresDocument> phrase_documents_scores_stack;
-    std::stack<ScoresDocument> term_documents_scores_stack;
-    std::queue<std::pair<PhraseType, std::string>> phrases_queue = WordProcessor::tokenizeQueryPhrases(query);
-    LogicalOperation op = LogicalOperation::OTHER;
-    LogicalOperation currentOp = LogicalOperation::OTHER;
-    ScoresDocument operand1;
-    ScoresDocument operand2;
-    ScoresDocument result;
-    phrases_queue.push(std::make_pair(PhraseType::LOGICAL_OPERATION, "!")); // Weak operator
-    while (!phrases_queue.empty())
+    try
     {
-        const auto &pair = phrases_queue.front();
-        phrases_queue.pop();
+        std::stack<LogicalOperation> operations_stack{};
+        std::stack<ScoresDocument> phrase_documents_scores_stack;
+        std::stack<ScoresDocument> term_documents_scores_stack;
 
-        if (pair.first == PhraseType::LOGICAL_OPERATION)
+        std::queue<std::pair<PhraseType, std::string>> phrases_queue = WordProcessor::tokenizeQueryPhrases(query);
+        LogicalOperation op = LogicalOperation::OTHER;
+        LogicalOperation currentOp = LogicalOperation::OTHER;
+        ScoresDocument operand1;
+        ScoresDocument operand2;
+        ScoresDocument result;
+
+        phrases_queue.push(std::make_pair(PhraseType::LOGICAL_OPERATION, "!")); // Weak operator
+        while (!phrases_queue.empty())
         {
-            if (!operations_stack.empty())
+            const auto &pair = phrases_queue.front();
+            phrases_queue.pop();
+
+            if (pair.first == PhraseType::LOGICAL_OPERATION)
             {
-                op = operations_stack.top();
-                currentOp = GetLogicalOperation(pair.second);
-                // std::cout<<"Current operation "<<(int)currentOp<<"\n";
-                while (op <= currentOp && currentOp != LogicalOperation::OPENING_BRACKET)
+                if (!operations_stack.empty())
                 {
-                    operations_stack.pop();
-                    if (op == LogicalOperation::NOT)
-                    {
-                        operand1 = phrase_documents_scores_stack.top();
-                        phrase_documents_scores_stack.pop();
-                        result = documentNOTOperation(std::move(operand1));
-                        phrase_documents_scores_stack.push(result);
-                    }
-                    else if (op == LogicalOperation::AND)
-                    {
-                        operand1 = phrase_documents_scores_stack.top();
-                        phrase_documents_scores_stack.pop();
-                        operand2 = phrase_documents_scores_stack.top();
-                        phrase_documents_scores_stack.pop();
-                        result = documentsANDOperation(std::move(operand1), std::move(operand2));
-                        phrase_documents_scores_stack.push(result);
-                    }
-                    else if (op == LogicalOperation::OR)
-                    {
-                        operand1 = phrase_documents_scores_stack.top();
-                        phrase_documents_scores_stack.pop();
-                        operand2 = phrase_documents_scores_stack.top();
-                        phrase_documents_scores_stack.pop();
-                        result = documentsOROperation(std::move(operand1), std::move(operand2));
-                        phrase_documents_scores_stack.push(result);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                    if (operations_stack.empty())
-                        break;
                     op = operations_stack.top();
+                    currentOp = GetLogicalOperation(pair.second);
+                    // std::cout<<"Current operation "<<(int)currentOp<<"\n";
+                    while (op <= currentOp && currentOp != LogicalOperation::OPENING_BRACKET)
+                    {
+                        operations_stack.pop();
+                        if (op == LogicalOperation::NOT)
+                        {
+                            operand1 = phrase_documents_scores_stack.top();
+                            phrase_documents_scores_stack.pop();
+                            result = documentNOTOperation(std::move(operand1));
+                            phrase_documents_scores_stack.push(result);
+                        }
+                        else if (op == LogicalOperation::AND)
+                        {
+                            operand1 = phrase_documents_scores_stack.top();
+                            phrase_documents_scores_stack.pop();
+                            operand2 = phrase_documents_scores_stack.top();
+                            phrase_documents_scores_stack.pop();
+                            result = documentsANDOperation(std::move(operand1), std::move(operand2));
+                            phrase_documents_scores_stack.push(result);
+                        }
+                        else if (op == LogicalOperation::OR)
+                        {
+                            operand1 = phrase_documents_scores_stack.top();
+                            phrase_documents_scores_stack.pop();
+                            operand2 = phrase_documents_scores_stack.top();
+                            phrase_documents_scores_stack.pop();
+                            result = documentsOROperation(std::move(operand1), std::move(operand2));
+                            phrase_documents_scores_stack.push(result);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                        if (operations_stack.empty())
+                            break;
+                        op = operations_stack.top();
+                    }
+                    if (currentOp != LogicalOperation::CLOSING_BRACKET)
+                        operations_stack.push(currentOp);
                 }
-                if (currentOp != LogicalOperation::CLOSING_BRACKET)
-                    operations_stack.push(currentOp);
+                else
+                {
+                    operations_stack.push(GetLogicalOperation(pair.second));
+                }
+            }
+            else if (pair.first == PhraseType::PHRASE)
+            {
+                phrase_documents_scores_stack.push(calculatePhraseScore(pair.second));
+            }
+            else if (pair.first == PhraseType::TERM)
+            {
+                ScoresDocument result = calculateTermScore(pair.second);
+                term_documents_scores_stack.push(std::move(result));
             }
             else
             {
-                operations_stack.push(GetLogicalOperation(pair.second));
+                continue;
             }
         }
-        else if (pair.first == PhraseType::PHRASE)
+
+        if (!term_documents_scores_stack.empty())
         {
-            phrase_documents_scores_stack.push(calculatePhraseScore(pair.second));
+            documentsStackCombineOperation(term_documents_scores_stack);
         }
-        else if (pair.first == PhraseType::TERM)
+        if (!phrase_documents_scores_stack.empty())
         {
-            ScoresDocument result = calculateTermScore(pair.second);
-            term_documents_scores_stack.push(std::move(result));
+            documentsStackCombineOperation(phrase_documents_scores_stack);
+        }
+
+        if (term_documents_scores_stack.empty())
+        {
+            return phrase_documents_scores_stack.top();
+        }
+        else if (phrase_documents_scores_stack.empty())
+        {
+            return term_documents_scores_stack.top();
         }
         else
         {
-            continue;
+            ScoresDocument boostedPhraseScore = documentsADDOperation(phrase_documents_scores_stack.top(), phrase_documents_scores_stack.top(), PHRASE_BOOST, 0);
+            term_documents_scores_stack.push(boostedPhraseScore); // Adding them in one stack to apply the combine operation on them
+            documentsStackCombineOperation(term_documents_scores_stack);
+            return documentNormalizeOperation(term_documents_scores_stack.top());
         }
     }
-    if (!term_documents_scores_stack.empty())
+    catch (std::exception &ex)
     {
-        documentsStackCombineOperation(term_documents_scores_stack);
-    }
-    if (!phrase_documents_scores_stack.empty())
-    {
-        documentsStackCombineOperation(phrase_documents_scores_stack);
-    }
-
-    if (term_documents_scores_stack.empty())
-    {
-        return phrase_documents_scores_stack.top();
-    }
-    else if (phrase_documents_scores_stack.empty())
-    {
-        return term_documents_scores_stack.top();
-    }
-    else
-    {
-        ScoresDocument boostedPhraseScore = documentsADDOperation(phrase_documents_scores_stack.top(), phrase_documents_scores_stack.top(), PHRASE_BOOST, 0);
-        term_documents_scores_stack.push(boostedPhraseScore); // Adding them in one stack to apply the combine operation on them
-        documentsStackCombineOperation(term_documents_scores_stack);
-        return documentNormalizeOperation(term_documents_scores_stack.top());
-    }
-    }catch(std::exception& ex){
-        std::cerr<<"Failed to process query: "<<ex.what();
+        std::cerr << "Failed to process query: " << ex.what();
+        return getEmptyScoresDocument();
     }
 }
 void BM25Ranker::documentsStackCombineOperation(std::stack<ScoresDocument> &documentsStack)
 {
-    try{
+    try
+    {
         BM25Ranker::ScoresDocument termFrequency{documentsStack.top()}, exactMatch{documentsStack.top()};
         documentsStack.pop();
         while (!documentsStack.empty())
@@ -166,15 +174,17 @@ void BM25Ranker::documentsStackCombineOperation(std::stack<ScoresDocument> &docu
         termFrequency = documentNormalizeOperation(std::move(termFrequency));
         ScoresDocument result = documentsADDOperation(termFrequency, exactMatch, BM25Ranker::TERM_FREQUENCY_WEIGHT, BM25Ranker::EXACT_MATCH_WEIGHT);
         documentsStack.push(std::move(result));
-    }catch(std::exception& ex){
-        std::cerr<<"Failed to combine documents: "<<ex.what();
     }
-    
+    catch (std::exception &ex)
+    {
+        std::cerr << "Failed to combine documents: " << ex.what();
+    }
 }
 BM25Ranker::ScoresDocument BM25Ranker::calculatePhraseScore(const std::string &phrase)
 {
-    // std::string normalizePhrase = WordProcessor::normalizeQuotedPhrase(std::move(phrase));
-    // std::cout<<normalizePhrase<<"___\n";
+
+    std::string normalizePhrase = WordProcessor::normalizeQuotedPhrase(std::move(phrase));
+
     std::vector<std::string> phrase_vector = tokenizeQuery(std::move(phrase));
     std::unordered_map<std::string, int> documentsMetadata = calculateTermFrequencyMetadata(std::move(phrase_vector));
     return calculateBM25ScoreForPhrase(std::move(documentsMetadata));
@@ -289,20 +299,29 @@ BM25Ranker::ScoresDocument BM25Ranker::getEmptyScoresDocument()
 std::vector<std::string> BM25Ranker::tokenizeQuery(const std::string &query)
 {
     std::vector<std::string> results{};
-
-    std::vector<std::string> terms = WordProcessor::tokenize(query);
-    std::string term;
-    for (long long unsigned int i = 0; i < terms.size(); i++)
+    try
     {
-        term = WordProcessor::normalize(terms[i]);
+        std::vector<std::string> terms = WordProcessor::tokenize(query);
+        std::string term;
+        for (long long unsigned int i = 0; i < terms.size(); i++)
+        {
+            term = WordProcessor::normalize(terms[i]);
 
-        // if (WordProcessor::isStopWord(term))  // stop words will complicate phrase search
-        //     continue;
-        term = WordProcessor::stem(term);
-        // if (WordProcessor::isValidWord(term))
-        // {
-        results.push_back(term);
-        // }
+            // if (WordProcessor::isStopWord(term))  // stop words will complicate phrase search
+            //     continue;
+            term = WordProcessor::stem(term);
+
+
+            // if (WordProcessor::isValidWord(term))
+            // {
+            if (!term.empty())
+                results.push_back(term);
+            // }
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << "Error tokenizing query: " << ex.what();
     }
     return results;
 }
@@ -398,42 +417,51 @@ double BM25Ranker::calculateBM25(int termFrequency, int documentLength, double a
 std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(const std::vector<std::string> &term_vector)
 {
     std::unordered_map<std::string, int> documents;
-    std::unordered_map<std::string, std::vector<int>> documentsMetadata;
-    for (const auto &documentPair : m_term_frequencies[term_vector[0]])
+    try
     {
-        documentsMetadata[documentPair.first] = documentPair.second;
-    }
 
-    for (const auto &term : term_vector)
-    {
-        for (const auto &documentPair : m_term_frequencies[term])
+        std::unordered_map<std::string, std::vector<int>> documentsMetadata;
+        if (term_vector.empty())
+            return documents;
+        for (const auto &documentPair : m_term_frequencies[term_vector[0]])
         {
-            std::vector<int> positions;
-            std::string documentId = documentPair.first;
-            std::vector<int> wordOccurrences = documentPair.second;
+            documentsMetadata[documentPair.first] = documentPair.second;
+        }
 
-            for (int position : wordOccurrences)
-            {
-                if (std::find(documentsMetadata[documentId].begin(), documentsMetadata[documentId].end(), position) != documentsMetadata[documentId].end())
+        for (const auto &term : term_vector)
+        {
+            if (!term.empty())
+                for (const auto &documentPair : m_term_frequencies[term])
                 {
-                    positions.push_back(position + 1);
+                    std::vector<int> positions;
+                    std::string documentId = documentPair.first;
+                    std::vector<int> wordOccurrences = documentPair.second;
+
+                    for (int position : wordOccurrences)
+                    {
+                        if (std::find(documentsMetadata[documentId].begin(), documentsMetadata[documentId].end(), position) != documentsMetadata[documentId].end())
+                        {
+                            positions.push_back(position + 1);
+                        }
+                    }
+                    documentsMetadata[documentId] = positions;
                 }
-            }
-            documentsMetadata[documentId] = positions;
         }
-    }
-    for (const auto &element : documentsMetadata)
-    {
-        if (element.second.size() > 0)
+        for (const auto &element : documentsMetadata)
         {
-            documents[element.first] = element.second.size();
+            if (element.second.size() > 0)
+            {
+                documents[element.first] = element.second.size();
+            }
         }
+        // std::cout<<"Documents containing the phrase:\n";
+        // for(const auto& element :documents){
+        //     std::cout<<element.first<<","<<element.second<<'\n';
+        // }
+        // std::cout<<"end\n";
+    }catch(std::exception&ex){
+        std::cerr<<ex.what();
     }
-    // std::cout<<"Documents containing the phrase:\n";
-    // for(const auto& element :documents){
-    //     std::cout<<element.first<<","<<element.second<<'\n';
-    // }
-    // std::cout<<"end\n";
     return documents;
 }
 

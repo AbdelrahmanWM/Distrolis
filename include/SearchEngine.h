@@ -9,12 +9,14 @@
 #define SEARCHENGINE_H  
 
 class SearchEngine{
-private:
-typedef  std::vector<std::pair<std::string,double>> SearchResultsDocument;
+
 public:
+typedef  std::vector<std::pair<std::string,double>> SearchResultsDocument;
+
 SearchEngine(const WebCrawler& webCrawler,const InvertedIndex& invertedIndex, const BM25Ranker& ranker );
 // ~SearchEngine();
 SearchResultsDocument search(const std::string search_query);
+void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearHistory=false);
 void crawl(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearPreviouslyCrawledPages=false);
 void indexDocuments(bool clearExistingInvertedIndexAndMetadata=false);
 void setDatabaseAndCollectionsNames(const std::string& databaseName, const std::string& documentsCollectionName, const std::string& visitedUrlsCollectionName, const std::string& invertedIndexCollectionName, const std::string& metadataCollectionName);
