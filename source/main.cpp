@@ -54,40 +54,16 @@ int main(int argc, char*argv[])
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
     SearchEngine engine{webCrawler,invertedIndex,bm25Ranker};
-	engine.crawl(seed_urls,10,true);
-	std::vector<std::pair<std::string,double>> documents = engine.search("(\"BBC news\" or \"CNN\") not \"England\"");
+	// engine.crawlAndIndexDocuments(seed_urls,10,true);
+	// std::vector<std::pair<std::string,double>> documents = engine.search("\"\"Israel\"\"");
 	// webCrawler.run(seed_urls,NUMBER_OF_PAGES,true);
 	// invertedIndex.run(true);
 
     
 	// std::vector<std::pair<std::string,double>> documents = bm25Ranker.run("(\"BBC news\" or \"CNN\") not \"England\"");
-	for(const auto&pair:documents){
-		std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
-	}
-	// SearchEngineServer server{};
-	// server.start();
+	// for(const auto&pair:documents){
+	// 	std::cout<<"Document: "<<pair.first<<" -> "<<pair.second<<'\n';
+	// }
+	SearchEngineServer server{engine};
+	server.start();
 }
-//CURL* curl;
-//CURLcode res;
-//std::string response;
-//
-//curl_global_init(CURL_GLOBAL_ALL);
-//
-//curl = curl_easy_init();
-//if (curl) {
-//    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:3000/api/users");
-//    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-//    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-//    res = curl_easy_perform(curl);
-//
-//    if (res != CURLE_OK) {
-//        std::cerr << "Failed to perform HTTP request: " << curl_easy_strerror(res) << std::endl;
-//    }
-//    else {
-//        std::cout << "Response:\n" << response << std::endl;
-//    }
-//    curl_easy_cleanup(curl);
-//}
-///// my code
-//
-//curl_global_cleanup();

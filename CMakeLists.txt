@@ -11,6 +11,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_C_COMPILER "C:/msys64/mingw64/bin/gcc.exe")
 set(CMAKE_CXX_COMPILER "C:/msys64/mingw64/bin/g++.exe")
+set(CMAKE_PREFIX_PATH "C:/Program Files/vcpkg")
+set(Crow_DIR "C:/Program Files/vcpkg/installed/x64-windows/share/crow")
+set(ASIO_DIR "C:/Program Files/vcpkg/installed/x64-windows/share/asio")
+find_package(ASIO REQUIRED)
+find_package(Crow CONFIG REQUIRED)
+
 
 # Define source files
 set(SOURCES
@@ -23,6 +29,8 @@ set(SOURCES
     source/WordProcessor.cpp
     source/BM25Ranker.cpp
     source/PhraseTypes.cpp
+    source/SearchEngine.cpp
+    source/SearchEngineServer.cpp
 )
 
 # Add the executable
@@ -33,10 +41,12 @@ target_include_directories(DistributedSearchEngine PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     "E:/CppModules/libstemmer/libstemmer_c-2.2.0/libstemmer_c-2.2.0/include"
     "C:/msys64/mingw64/include/libxml2"
-    # "C:/mongo-c-driver/include/libmongoc-1.0"
-    # "C:/mongo-c-driver/include/libbson-1.0"
     "C:/msys64/mingw64/include/mongoc-1.0/libbson-1.0"
     "C:/msys64/mingw64/include/mongoc-1.0/libmongoc-1.0"
+    "C:/Program Files/vcpkg/installed/x64-windows/include"
+    # "C:/Program Files/vcpkg/packages/crow_x64-windows/include"
+    # "C:/Program Files/vcpkg/packages/asio_x64-windows/include"
+
 )
 
 # Link directories
@@ -51,8 +61,15 @@ target_link_libraries(DistributedSearchEngine PRIVATE
     ${CMAKE_DL_LIBS}
     curl
     xml2
-    mongoc-1.0  # Dynamic library for MongoDB
-    bson-1.0    # Dynamic library for BSON
+    mongoc-1.0
+    bson-1.0
+    Crow::Crow
+    asio::asio
+    ws2_32
+    -lws2_32
+    -lmswsock
+
+
 )
 
 # Compiler options
@@ -63,6 +80,7 @@ else()
     target_compile_definitions(DistributedSearchEngine PRIVATE NDEBUG)
     target_compile_options(DistributedSearchEngine PRIVATE -Wall -O3)
 endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(DistributedSearchEngine PRIVATE -Wno-all)  # Disable all warnings
 endif()
