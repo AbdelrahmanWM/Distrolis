@@ -13,7 +13,7 @@ bson_t * HTMLParser::getPageDocument(const std::string & htmlContent, const std:
 {
     return createBSONFromDocument(extractElements(htmlContent,url));
 }
-void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, const DataBase *&db,const std::string&database_name, const std::string& collection_name) const
+void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, DataBase *&db,const std::string&database_name, const std::string& collection_name) const
 {
 
     try
