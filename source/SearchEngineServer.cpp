@@ -55,10 +55,7 @@ crow::response SearchEngineServer::crawl(const crow::request &req)
 
         std::string numberOfPages = numberOfPagesJSON.dump();
 
-        crow::json::wvalue clearJSON = post_data["clear"];
-        std::string clear = clearJSON.dump();
-
-        m_searchEngine.crawl(seed_urls, std::stoi(numberOfPages), (bool)std::stoi(clear));
+        m_searchEngine.crawl( std::stoi(numberOfPages),seed_urls);
         std::string response = "Successfully crawled the pages";
         return crow::response(200, response);
     }

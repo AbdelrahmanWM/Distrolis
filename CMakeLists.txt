@@ -31,6 +31,7 @@ set(SOURCES
     source/PhraseTypes.cpp
     source/SearchEngine.cpp
     source/SearchEngineServer.cpp
+    source/DocumentRetriever.cpp
 )
 
 # Add the executable

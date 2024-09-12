@@ -2,7 +2,7 @@
 #include "DataBase.h"
 #include "WordProcessor.h"
 
-InvertedIndex::InvertedIndex(const DataBase *&db,const std::string& database_name, const std::string& collection_name,  const std::string& documents_collection_name,const std::string& metadata_collection_name)
+InvertedIndex::InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,  const std::string& documents_collection_name,const std::string& metadata_collection_name)
     : m_index{}, m_db{db}, m_database_name{database_name},m_collection_name{collection_name},m_documents_collection_name{documents_collection_name},m_metadata_collection_name{metadata_collection_name}
 {
 }

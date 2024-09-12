@@ -5,23 +5,22 @@
 
 class URLParser {
 public:
-	URLParser(const std::string& baseURL);
-	std::string convertToAbsoluteURL(const std::string& url);
-	void setBaseURL(const std::string& baseURL);
-	bool isDomainURL()const;
-	std::string getRobotsTxtURL()const;
+	URLParser();
+	static std::string convertToAbsoluteURL(const std::string& url,const std::string& base_url);
+	static bool isDomainURL(const std::string& base_url);
+	static std::string getRobotsTxtURL(const std::string& base_url);
 	static std::string normalizeURL(const std::string& url);
 
 private:
-	std::string m_baseURL;
 
-	bool isAbsoluteURL(const std::string& url);
-	bool isProtocolRelativeURL(const std::string& url);
-	bool isRootRelativeURL(const std::string& url);
-	std::string resolveProtocolRelativeURL(const std::string& url);
-	std::string resolveRootRelativeURL(const std::string& url);
-	std::string resolvePathRelativeURL(const std::string& url);
-	bool shouldIgnoreURL(const std::string& url);
+	static void checkBaseUrl(const std::string&base_url );
+	static bool isAbsoluteURL(const std::string& url);
+	static bool isProtocolRelativeURL(const std::string& url);
+	static bool isRootRelativeURL(const std::string& url);
+	static std::string resolveProtocolRelativeURL(const std::string& url,const std::string& base_url);
+	static std::string resolveRootRelativeURL(const std::string& url,const std::string& base_url);
+	static std::string resolvePathRelativeURL(const std::string& url,const std::string& base_url);
+	static bool shouldIgnoreURL(const std::string& url);
 	
 
 };

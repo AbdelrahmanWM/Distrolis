@@ -5,6 +5,8 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include <mutex>
+#include <thread>
 #include <mongoc/mongoc.h>
 #include <bson/bson.h>
 
@@ -14,20 +16,23 @@ public:
     static DataBase *getInstance(const std::string &connectionString);
     static void destroyInstance();
 
-    void insertDocument(const bson_t *document,const std::string& database_name, const std::string &collection_name) const;
-    void insertManyDocuments(std::vector<bson_t *>documents,const std::string& database_name, const std::string &collection_name) const;
-    bson_t* getDocument(const std::string& database_name, const std::string& collection_name) const;
-    std::vector<bson_t*> getAllDocuments(const std::string& database_name, const std::string& collection_name,bson_t*filters=bson_new()) const;
-    void clearCollection(const std::string& database_name, const std::string collection_name) const;
-    void saveInvertedIndex (const std::unordered_map<std::string,  std::unordered_map<std::string,std::vector<int>>> &index, const std::string&database_name,const std::string collection_name) const;
-    void markDocumentProcessed(const bson_t*document,const std::string& database_name, const std::string &collection_name)const;
-    std::string extractContentFromIndexDocument(const bson_t* document) const;
-    std::string extractIndexFromIndexDocument(const bson_t* document) const;
+    void insertDocument(const bson_t *document,const std::string& database_name, const std::string &collection_name);
+    void insertManyDocuments(std::vector<bson_t *>documents,const std::string& database_name, const std::string &collection_name);
+    bson_t* getDocument(const std::string& database_name, const std::string& collection_name);
+    std::vector<bson_t*> getAllDocuments(const std::string& database_name, const std::string& collection_name,bson_t*filters=bson_new());
+    std::vector<bson_t*> getDocumentsByIds(const std::string&database_name, const std::string& collection_name, const std::vector<std::string>&ids);
+    bson_t* createIdFilter(const std::vector<std::string>&ids);
+    void clearCollection(const std::string& database_name, const std::string collection_name);
+    void saveInvertedIndex (const std::unordered_map<std::string,  std::unordered_map<std::string,std::vector<int>>> &index, const std::string&database_name,const std::string collection_name);
+    void markDocumentProcessed(const bson_t*document,const std::string& database_name, const std::string &collection_name);
+    std::string extractContentFromIndexDocument(const bson_t* document);
+    std::string extractIndexFromIndexDocument(const bson_t* document);
 private:
     DataBase(const std::string &connectionString);
     ~DataBase();
     static DataBase *db;
     mongoc_client_t *m_client;
+    std::mutex dbMutex;
 };
 
 #endif // DATABASE_H

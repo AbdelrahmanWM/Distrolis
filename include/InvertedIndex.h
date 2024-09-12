@@ -14,7 +14,7 @@
 class InvertedIndex
 {
 public:
-    InvertedIndex(const DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name);
+    InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name);
     void run(bool clear = false);
     void retrieveExistingMetadataDocument();
     void retrieveExistingIndex();
@@ -44,7 +44,7 @@ private:
     std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>> m_index;
     document_metadata m_document_metadata;
     document_metadata m_iteration_metadata;
-    const DataBase *&m_db;
+    DataBase *&m_db;
     std::string m_database_name;
     std::string m_collection_name;
     std::string m_documents_collection_name;

@@ -13,11 +13,11 @@ class SearchEngine{
 public:
 typedef  std::vector<std::pair<std::string,double>> SearchResultsDocument;
 
-SearchEngine(const WebCrawler& webCrawler,const InvertedIndex& invertedIndex, const BM25Ranker& ranker );
+SearchEngine(WebCrawler* webCrawler,InvertedIndex* invertedIndex, BM25Ranker* ranker );
 // ~SearchEngine();
 SearchResultsDocument search(const std::string search_query);
 void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearHistory=false);
-void crawl(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearPreviouslyCrawledPages=false);
+void crawl(int maximumNumberOfPages,std::queue<std::string>& seedUrls);
 void indexDocuments(bool clearExistingInvertedIndexAndMetadata=false);
 void setDatabaseAndCollectionsNames(const std::string& databaseName, const std::string& documentsCollectionName, const std::string& visitedUrlsCollectionName, const std::string& invertedIndexCollectionName, const std::string& metadataCollectionName);
 void setDatabaseName(const std::string& newDataBaseName);
@@ -26,10 +26,12 @@ void setVisitedUrlsCollectionName(const std::string& collectionName);
 void setInvertedIndexCollectionName(const std::string& collectionName);
 void setMetadataCollectionName(const std::string& collectionName);
 void setRankerParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
+void setNumberOfThreads(int numberOfThreads);
 private:
 
-WebCrawler m_webCrawler;
-InvertedIndex m_invertedIndex;
-BM25Ranker m_ranker;
+WebCrawler* m_webCrawler;
+InvertedIndex* m_invertedIndex;
+BM25Ranker* m_ranker;
+
 };
 #endif

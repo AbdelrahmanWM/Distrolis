@@ -1,12 +1,18 @@
 #include "URLParser.h"
 
-URLParser::URLParser(const std::string& baseURL) : m_baseURL(baseURL) {
-    if (m_baseURL.empty()) {
+URLParser::URLParser() {
+    
+}
+
+void URLParser::checkBaseUrl(const std::string&base_url )
+{
+if (base_url.empty()) {
         throw std::invalid_argument("Base URL cannot be empty");
     }
 }
 
-bool URLParser::isAbsoluteURL(const std::string& url) {
+bool URLParser::isAbsoluteURL(const std::string &url)
+{
     return url.find("http://") == 0 || url.find("https://") == 0;
 }
 
@@ -38,10 +44,10 @@ std::string URLParser::normalizeURL(const std::string &url)
     return normalizeURL;
 }
 
-std::string URLParser::resolveProtocolRelativeURL(const std::string& url) {
+std::string URLParser::resolveProtocolRelativeURL(const std::string& url,const std::string& base_url) {
     std::regex regex{ "^(http:|https:)" };
     std::smatch match;
-    if (std::regex_search(m_baseURL, match, regex)) {
+    if (std::regex_search(base_url, match, regex)) {
         return match.str(1) + url;
     }
     else {
@@ -49,10 +55,10 @@ std::string URLParser::resolveProtocolRelativeURL(const std::string& url) {
     }
 }
 
-std::string URLParser::resolveRootRelativeURL(const std::string& url) {
+std::string URLParser::resolveRootRelativeURL(const std::string& url,const std::string& base_url) {
     std::regex domainRegex{ R"(^([a-zA-Z]+://[^/]+))" };
     std::smatch match;
-    if (std::regex_search(m_baseURL, match, domainRegex)) {
+    if (std::regex_search(base_url, match, domainRegex)) {
         return match.str(1) + url;
     }
     else {
@@ -60,8 +66,8 @@ std::string URLParser::resolveRootRelativeURL(const std::string& url) {
     }
 }
 
-std::string URLParser::resolvePathRelativeURL(const std::string& url) {
-    std::string base = m_baseURL;
+std::string URLParser::resolvePathRelativeURL(const std::string& url,const std::string& base_url) {
+    std::string base = base_url;
     std::size_t last_slash = base.find_last_of('/');
     if (last_slash != std::string::npos) {
         base = base.substr(0, last_slash + 1);
@@ -69,45 +75,39 @@ std::string URLParser::resolvePathRelativeURL(const std::string& url) {
     return base + url;
 }
 
-std::string URLParser::convertToAbsoluteURL(const std::string& url) {
+std::string URLParser::convertToAbsoluteURL(const std::string& url,const std::string& base_url) {
     std::string result{};
     if (shouldIgnoreURL(url)) {
-        result = m_baseURL;
+        result = base_url;
     }
 
     else if (isAbsoluteURL(url)) {
         result = url;
     }
     else if (isProtocolRelativeURL(url)) {
-        result = resolveProtocolRelativeURL(url);
+        result = resolveProtocolRelativeURL(url,base_url);
     }
     else if (isRootRelativeURL(url)) {
-        result = resolveRootRelativeURL(url);
+        result = resolveRootRelativeURL(url,base_url);
     }
     else {
-        result = resolvePathRelativeURL(url);
+        result = resolvePathRelativeURL(url,base_url);
     }
     return normalizeURL(result);
 
 }
 
-void URLParser::setBaseURL(const std::string& baseURL) {
-    if (baseURL.empty()) {
-        throw std::invalid_argument("Base URL cannot be empty");
-    }
-    m_baseURL = baseURL;
-}
 
-bool URLParser::isDomainURL() const
+bool URLParser::isDomainURL(const std::string& base_url)
 {
     std::regex domainRegex {R"(^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\/?$)"};
     std::smatch match;
-    return std::regex_match(m_baseURL,domainRegex);
+    return std::regex_match(base_url,domainRegex);
 }
 
-std::string URLParser::getRobotsTxtURL() const
+std::string URLParser::getRobotsTxtURL(const std::string& base_url)
 {
 
-    if(m_baseURL[m_baseURL.length()-1]=='/')return m_baseURL+"robots.txt";
-    else return m_baseURL+"/robots.txt";
+    if(base_url[base_url.length()-1]=='/')return base_url+"robots.txt";
+    else return base_url+"/robots.txt";
 }
