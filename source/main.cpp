@@ -11,7 +11,7 @@ static const std::string DOCUMENTS_COLLECTION = "pages";
 static const std::string VISITED_URLS_COLLECTION = "VisitedUrls";
 static const std::string INVERTED_INDEX_COLLECTION = "Index";
 static const std::string METADATA_COLLECTION="Metadata";
-static const int NUMBER_OF_PAGES = 300;
+static const int NUMBER_OF_PAGES = 1000;
 static const int NUMBER_OF_THREADS = 5;
 static const bool USE_PROXY = false;
 static const double BM25K1 = 1.5;
@@ -31,10 +31,26 @@ static std::queue<std::string>seed_urls({
     "https://www.wired.com/",
     "https://www.nytimes.com/",
     "https://arstechnica.com/",
-    "https://www.coursera.org/",
     "https://news.ycombinator.com/",
     "https://www.medium.com/",
-	    "https://www.khanacademy.org/"
+	    "https://www.khanacademy.org/",
+		    "https://arstechnica.com",
+    "https://www.theverge.com",
+    "https://www.cnet.com",
+    "https://www.bloomberg.com",
+    "https://www.zdnet.com",
+    "https://www.engadget.com",
+    "https://www.polygon.com",
+    "https://www.scientificamerican.com"
+    // "https://www.coursera.org",
+    // "https://www.edx.org",
+    // "https://www.udemy.com",
+    // "https://www.academia.edu",
+    // "https://www.open.edu",
+    // "https://www.scholarly.org",
+    // "https://www.ted.com",
+    // "https://www.wolframalpha.com",
+    // "https://www.codecademy.com"
 
 });
 
@@ -65,6 +81,9 @@ int main(int argc, char*argv[])
 
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
     SearchEngine engine{&webCrawler,&invertedIndex,&bm25Ranker};
+	engine.setNumberOfThreads(6);
+	webCrawler.clearCrawledDocuments();
+	engine.crawl(1000,seed_urls);
 	/**********************************
 	// engine.crawlAndIndexDocuments(seed_urls,10,true);
 	// std::vector<std::pair<std::string,double>> documents = engine.search("\"\"Israel\"\"");
@@ -78,6 +97,6 @@ int main(int argc, char*argv[])
 	// }
 	**********************************/
 
-	SearchEngineServer server{engine};
-	server.start();
+	// SearchEngineServer server{engine};
+	// server.start();
 }
