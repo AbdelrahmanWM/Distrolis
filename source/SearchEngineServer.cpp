@@ -18,10 +18,12 @@ void SearchEngineServer::start()
     using std::placeholders::_1;
     CROW_ROUTE(app, "/").methods(crow::HTTPMethod::Get)(std::bind(&SearchEngineServer::rootAPIDocumentation, this, _1));
     CROW_ROUTE(app, "/search").methods(crow::HTTPMethod::Get)(std::bind(&SearchEngineServer::search, this, _1));
+    CROW_ROUTE(app, "/setThreadsNumber").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::setThreadsNumber, this, _1));
     CROW_ROUTE(app, "/crawl").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::crawl, this, _1));
     CROW_ROUTE(app, "/indexDocuments").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::indexDocument, this, _1));
     CROW_ROUTE(app, "/crawlAndIndexDocument").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::crawlAndIndexDocument, this, _1));
-    CROW_ROUTE(app, "/setRankerParameters").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::setRankerParameters, this, _1));
+    CROW_ROUTE(app, "/setRankerParameters").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::setRankerParameters, this, _1));
+    CROW_ROUTE(app, "/clearCrawlHistory").methods(crow::HTTPMethod::Delete)(std::bind(&SearchEngineServer::clearCrawlHistory, this, _1));
 
     app.port(8080).multithreaded().run();
 }
@@ -40,6 +42,34 @@ crow::response SearchEngineServer::search(const crow::request &req)
     }
 }
 
+crow::response SearchEngineServer::setThreadsNumber(const crow::request &req)
+{
+    try
+    {
+        auto post_data = crow::json::load(req.body);
+        if (!post_data)
+        {
+            return crow::response(404, "Invalid JSON data.");
+        }
+        crow::json::wvalue numberOfThreadsJSON = post_data["numberOfThreads"];
+        std::string numberOfThreads = numberOfThreadsJSON.dump();
+        bool updated = m_searchEngine.setNumberOfThreads(std::stoi(numberOfThreads));
+        if (updated)
+        {
+            return crow::response(200, "Successfully updated threads number.");
+        }
+        else
+        {
+            std::string msg = "Failed to update the number of threads, make sure the number is between 0 and " + std::to_string(std::thread::hardware_concurrency() - 1) + ".";
+            return crow::response(404, msg);
+        }
+    }
+    catch (std::exception &ex)
+    {
+        return crow::response(500, ex.what());
+    }
+}
+
 crow::response SearchEngineServer::crawl(const crow::request &req)
 {
     try
@@ -54,8 +84,9 @@ crow::response SearchEngineServer::crawl(const crow::request &req)
         crow::json::wvalue numberOfPagesJSON = post_data["numberOfPages"];
 
         std::string numberOfPages = numberOfPagesJSON.dump();
-
-        m_searchEngine.crawl( std::stoi(numberOfPages),seed_urls);
+        int num = std::stoi(numberOfPages);
+        std::cout<<"Number: "<<num<<'\n';
+        m_searchEngine.crawl(num, seed_urls);
         std::string response = "Successfully crawled the pages";
         return crow::response(200, response);
     }
@@ -118,6 +149,19 @@ crow::response SearchEngineServer::crawlAndIndexDocument(const crow::request &re
     }
 }
 
+crow::response SearchEngineServer::clearCrawlHistory(const crow::request &req)
+{
+    try
+    {
+        m_searchEngine.clearCrawlHistory();
+        return crow::response(200, "Successfully cleared crawl history.");
+    }
+    catch (std::exception &ex)
+    {
+        return crow::response(500, ex.what());
+    }
+}
+
 crow::json::wvalue SearchEngineServer::SearchResultsDocumentToJSON(SearchEngine::SearchResultsDocument &resultsDocument)
 {
     crow::json::wvalue::list result{};
@@ -163,8 +207,8 @@ crow::response SearchEngineServer::setRankerParameters(const crow::request &req)
 crow::response SearchEngineServer::rootAPIDocumentation(const crow::request &req)
 {
     crow::response res;
-    res.set_header("Content-Type","text/html");
-    return (200,getAPIDocumentationHTMLPage());
+    res.set_header("Content-Type", "text/html");
+    return (200, getAPIDocumentationHTMLPage());
 }
 
 std::queue<std::string> SearchEngineServer::SeedUrlsJSONToQueue(crow::json::wvalue &list)
@@ -177,7 +221,7 @@ std::queue<std::string> SearchEngineServer::SeedUrlsJSONToQueue(crow::json::wval
 std::string SearchEngineServer::getAPIDocumentationHTMLPage()
 {
     const std::string HTMLPage = R"(
-    <!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -322,7 +366,7 @@ std::string SearchEngineServer::getAPIDocumentationHTMLPage()
         <div class="api-section">
             <h2>5. Set Ranker Parameters</h2>
             <p><strong>Endpoint:</strong> /setRankerParameters</p>
-            <p><strong>Method:</strong> POST</p>
+            <p><strong>Method:</strong> PUT</p>
             <p><strong>Request Body:</strong></p>
             <pre>{
     "BM25_K1": 1.5,
@@ -343,9 +387,39 @@ std::string SearchEngineServer::getAPIDocumentationHTMLPage()
             <pre>404 Not Found: Invalid JSON data</pre>
             <pre>500 Internal Server Error</pre>
         </div>
+
+        <div class="api-section">
+            <h2>6. Set Threads Number</h2>
+            <p><strong>Endpoint:</strong> /setThreadsNumber</p>
+            <p><strong>Method:</strong> PUT</p>
+            <p><strong>Request Body:</strong></p>
+            <pre>{
+    "numberOfThreads": 8
+}</pre>
+            <p><strong>Parameters:</strong></p>
+            <ul>
+                <li><strong>numberOfThreads</strong> (integer): Number of threads to set for the search engine.</li>
+            </ul>
+            <p><strong>Response:</strong></p>
+            <pre>200 OK: Successfully updated threads number</pre>
+            <p><strong>Error Response:</strong></p>
+            <pre>404 Not Found: Failed to update threads number, check the range</pre>
+            <pre>500 Internal Server Error</pre>
+        </div>
+
+        <div class="api-section">
+            <h2>7. Clear Crawl History</h2>
+            <p><strong>Endpoint:</strong> /clearCrawlHistory</p>
+            <p><strong>Method:</strong> DELETE</p>
+            <p><strong>Response:</strong></p>
+            <pre>200 OK: Successfully cleared crawl history</pre>
+            <p><strong>Error Response:</strong></p>
+            <pre>500 Internal Server Error</pre>
+        </div>
     </div>
 </body>
 </html>
-    )" ;
+
+    )";
     return HTMLPage;
 }

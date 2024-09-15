@@ -10,10 +10,13 @@ public:
     void start();
     
 private: 
+    
     crow::response search(const crow::request& req);
+    crow::response setThreadsNumber(const crow::request& req);
     crow::response crawl(const crow::request& req);
     crow::response indexDocument(const crow::request& req);
     crow::response crawlAndIndexDocument(const crow::request& req);
+    crow::response clearCrawlHistory(const crow::request& req);
     crow::response setRankerParameters(const crow::request& req);
     crow::response rootAPIDocumentation(const crow::request& req);
     crow::json::wvalue SearchResultsDocumentToJSON(SearchEngine::SearchResultsDocument& resultsDocument );

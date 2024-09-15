@@ -24,6 +24,7 @@ WebCrawler::~WebCrawler()
 void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &seedUrls)
 {
 	auto start = std::chrono::high_resolution_clock::now();
+	std::cout<<m_visitedUrls.size()<<","<<m_crawled_pages.size()<<"<"<<m_frontier.size()<<","<<stopRequested<<"|\n";
 	m_crawled_pages.reserve(maximumNumberOfPagesToCrawl + 30);
 
 	addSeedUrls(seedUrls);
@@ -47,6 +48,11 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 	std::cout << "visited urls: " << m_visitedUrls.size() << '\n';
 	saveVisitedUrls();
 	std::cout << "Crawled pages number: " << m_crawled_pages.size() << "\n";
+	m_frontier={};
+	m_crawled_pages={};
+	m_visitedUrls={};
+	stopRequested=false;
+
 
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -387,9 +393,13 @@ void WebCrawler::setVisitedUrlCollectionName(const std::string &collectionName)
 	m_visitedUrls_collection_name = collectionName;
 }
 
-void WebCrawler::setNumberOfThreads(int numberOfThreads)
+bool WebCrawler::setNumberOfThreads(int numberOfThreads)
 {
-	m_numberOfThreads = numberOfThreads > 0 ? numberOfThreads : m_numberOfThreads;
+	if(numberOfThreads>0 && numberOfThreads < static_cast<int>(std::thread::hardware_concurrency())){
+		m_numberOfThreads = numberOfThreads;
+		return true;
+	}
+	return false;
 }
 
 std::string WebCrawler::getRandomProxy()

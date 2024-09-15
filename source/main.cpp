@@ -81,9 +81,9 @@ int main(int argc, char*argv[])
 
 	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
     SearchEngine engine{&webCrawler,&invertedIndex,&bm25Ranker};
-	engine.setNumberOfThreads(6);
-	webCrawler.clearCrawledDocuments();
-	engine.crawl(1000,seed_urls);
+	// engine.setNumberOfThreads(6);
+	// webCrawler.clearCrawledDocuments();
+	// engine.crawl(100,seed_urls);
 	/**********************************
 	// engine.crawlAndIndexDocuments(seed_urls,10,true);
 	// std::vector<std::pair<std::string,double>> documents = engine.search("\"\"Israel\"\"");
@@ -97,6 +97,6 @@ int main(int argc, char*argv[])
 	// }
 	**********************************/
 
-	// SearchEngineServer server{engine};
-	// server.start();
+	SearchEngineServer server{engine};
+	server.start();
 }

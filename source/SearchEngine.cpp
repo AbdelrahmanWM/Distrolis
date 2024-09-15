@@ -72,7 +72,12 @@ void SearchEngine::setRankerParameters(double BM25_K1, double BM25_B, double PHR
     BM25Ranker::setRankerParameters(BM25_K1,BM25_B,PHRASE_BOOST_VALUE,EXACT_MATCH_WEIGHT);
 }
 
-void SearchEngine::setNumberOfThreads(int numberOfThreads)
+bool SearchEngine::setNumberOfThreads(int numberOfThreads)
 {
-    m_webCrawler->setNumberOfThreads(numberOfThreads);
+    return m_webCrawler->setNumberOfThreads(numberOfThreads);
+}
+
+void SearchEngine::clearCrawlHistory()
+{
+    m_webCrawler->clearCrawledDocuments();
 }

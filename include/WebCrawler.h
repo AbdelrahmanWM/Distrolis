@@ -24,7 +24,7 @@ public:
  	void setDatabaseName(const std::string& databaseName);
 	void setDocumentsCollectionName(const std::string& collectionName);
 	void setVisitedUrlCollectionName(const std::string& collectionName);
-	void setNumberOfThreads(int numberOfThreads);
+	bool setNumberOfThreads(int numberOfThreads);
 private: 
 	void addSeedUrls(std::queue<std::string>& seedUrls);
 	void parsePage(const std::string& htmlContent, const std::string& url);

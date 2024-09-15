@@ -26,7 +26,8 @@ void setVisitedUrlsCollectionName(const std::string& collectionName);
 void setInvertedIndexCollectionName(const std::string& collectionName);
 void setMetadataCollectionName(const std::string& collectionName);
 void setRankerParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
-void setNumberOfThreads(int numberOfThreads);
+bool setNumberOfThreads(int numberOfThreads);
+void clearCrawlHistory();
 private:
 
 WebCrawler* m_webCrawler;
