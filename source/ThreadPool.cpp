@@ -6,7 +6,7 @@ ThreadPool::ThreadPool(size_t threads)
     for (size_t i = 0; i < threads; i++)
     {
         std::function<void()> funcPtr = [this]
-        { this->WorkerThread() };
+        { this->WorkerThread(); };
         std::thread t{funcPtr};
         workers.push_back(std::move(t));
     }

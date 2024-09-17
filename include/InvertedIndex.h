@@ -16,6 +16,7 @@ class InvertedIndex
 public:
     InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name);
     void run(bool clear = false);
+    void processDocument(bson_t* document);
     void retrieveExistingMetadataDocument();
     void retrieveExistingIndex();
     std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>> getInvertedIndex();

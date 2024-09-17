@@ -2,11 +2,10 @@
 
 DataBase *DataBase::db = nullptr;
 
-
 DataBase::DataBase(const std::string &connectionString)
 {
     mongoc_init();
-    
+
     m_client = mongoc_client_new(connectionString.c_str());
     if (!m_client)
     {
@@ -95,11 +94,16 @@ void DataBase::insertDocument(const bson_t *document, const std::string &databas
 void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::string &database_name, const std::string &collection_name)
 {
     std::lock_guard<std::mutex> lock(dbMutex);
+    std::cout << "HERE\n";
+    std::cout << "HERE\n";
+
     if (documents.size() == 0)
     {
+        std::cout << "HERE\n";
         std::cout << "No documents to insert\n";
         return;
     }
+    std::cout << "HERE\n";
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     bool insertSuccess = false;
@@ -115,6 +119,7 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
         std::cout << "Collection obtained successfully." << std::endl;
         std::vector<const bson_t *> documentPointers(documents.begin(), documents.end());
         insertSuccess = mongoc_collection_insert_many(collection, documentPointers.data(), documentPointers.size(), nullptr, nullptr, &error);
+        std::cout << "HERE\n";
         if (!insertSuccess)
         {
             std::cerr << "Failed to insert documents: " << error.message << std::endl;
@@ -240,11 +245,12 @@ bson_t *DataBase::createIdFilter(const std::vector<std::string> &ids)
 
 void DataBase::clearCollection(const std::string &database_name, const std::string collection_name)
 {
-    std::lock_guard<std::mutex> lock(dbMutex);
 
     mongoc_collection_t *collection = nullptr;
     try
     {
+        std::lock_guard<std::mutex> lock(dbMutex);
+        std::cout << "HERE";
         collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
         if (!collection)
         {
@@ -272,7 +278,6 @@ void DataBase::clearCollection(const std::string &database_name, const std::stri
 
 void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> &index, const std::string &database_name, const std::string collection_name)
 {
-    std::lock_guard<std::mutex> lock(dbMutex);
 
     // bson_t *document = bson_new();
     std::vector<bson_t *> documents{};
@@ -338,7 +343,7 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unor
 }
 
 void DataBase::markDocumentProcessed(const bson_t *document, const std::string &database_name, const std::string &collection_name)
-{       
+{
     std::lock_guard<std::mutex> lock(dbMutex);
 
     bson_error_t error;

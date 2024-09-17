@@ -26,10 +26,7 @@ void InvertedIndex::run(bool clear)
         
         for (auto document : documents)
         {
-            std::string content = m_db->extractContentFromIndexDocument(document);
-            std::string docId = m_db->extractIndexFromIndexDocument(document);
-            addDocument(docId, content);
-            m_db->markDocumentProcessed(document,m_database_name,m_documents_collection_name);
+            processDocument(document);
         }
         updateMetadataDocument();
         // std::cout<<"Average: "<<m_document_metadata.average_doc_length<<"\n";
@@ -43,6 +40,14 @@ void InvertedIndex::run(bool clear)
     {
         std::cerr << "Error: " << ex.what() << '\n';
     }
+}
+
+void InvertedIndex::processDocument(bson_t *document)
+{
+    std::string content = m_db->extractContentFromIndexDocument(document);
+    std::string docId = m_db->extractIndexFromIndexDocument(document);
+    addDocument(docId, content);
+    m_db->markDocumentProcessed(document,m_database_name,m_documents_collection_name);
 }
 
 InvertedIndex::document_metadata InvertedIndex::getMetadataDocument()

@@ -32,6 +32,7 @@ set(SOURCES
     source/SearchEngine.cpp
     source/SearchEngineServer.cpp
     source/DocumentRetriever.cpp
+    source/ThreadPool.cpp
 )
 
 # Add the executable
