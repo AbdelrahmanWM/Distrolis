@@ -4,7 +4,7 @@
 #include "SearchEngineServer.h"
 #include <functional>
 #include <chrono>
-
+// #include "ThreadPool.h"
 
 static const std::string DATABASE = "SearchEngine";
 static const std::string DOCUMENTS_COLLECTION = "pages";
@@ -69,7 +69,10 @@ int main(int argc, char*argv[])
 	DataBase* db = DataBase::getInstance(connectionString);
 	HTMLParser htmlParser{};
 	WebCrawler webCrawler{db,htmlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
+	ThreadPool threadPool{NUMBER_OF_THREADS};
+	
 	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
+
 
 
 	// auto start = std::chrono::high_resolution_clock::now();
@@ -79,7 +82,7 @@ int main(int argc, char*argv[])
 	// std::cout<<"Time taken: "<<duration.count()<<" seconds\n";
 	// webCrawler.clearCrawledDocuments();
 
-	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,invertedIndex};
+	BM25Ranker bm25Ranker{DATABASE,DOCUMENTS_COLLECTION,&invertedIndex};
     SearchEngine engine{&webCrawler,&invertedIndex,&bm25Ranker};
 	// engine.setNumberOfThreads(6);
 	// webCrawler.clearCrawledDocuments();

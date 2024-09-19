@@ -176,14 +176,14 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
         std::cout << "Collection obtained successfully." << std::endl;
         std::vector<const bson_t *> documentPointers(documents.begin(), documents.end());
         std::cout << "HERE\n";
-        for (const bson_t *doc : documentPointers)
-        {
-            if (doc == nullptr)
-            {
-                std::cout << "Found a null document pointer in documentPointers\n";
-                // Handle error
-            }
-        }
+        // for (const bson_t *doc : documentPointers)
+        // {
+        //     if (doc == nullptr)
+        //     {
+        //         std::cout << "Found a null document pointer in documentPointers\n";
+        //         // Handle error
+        //     }
+        // }
         insertSuccess = mongoc_collection_insert_many(collection, documentPointers.data(), documentPointers.size(), nullptr, nullptr, &error);
         std::cout << "HERE\n";
         if (!insertSuccess)

@@ -1,22 +1,24 @@
 #include "ThreadPool.h"
 #include <iostream>
-
 ThreadPool::ThreadPool(size_t threads)
 {
+    stop = false;
     for (size_t i = 0; i < threads; i++)
     {
         std::function<void()> funcPtr = [this]
-        { this->WorkerThread(); };
+        { this->workerThread(); };
         std::thread t{funcPtr};
         workers.push_back(std::move(t));
     }
+    // add threads with conditional lock waiting for tasks in the queue to exicute them
 }
 
 ThreadPool::~ThreadPool()
 {
+    // stops all threads and joins them to make sure they complete thier work
     {
-        std::unique_lock<std::mutex>(queueMutex);
-        stop = true;
+        std::unique_lock<std::mutex> lock(queueMutex);
+        stop = true; // shared resource
         condition.notify_all();
     }
     for (std::thread &thread : workers)
@@ -36,7 +38,7 @@ void ThreadPool::enqueue(std::function<void()> task)
     condition.notify_one();
 }
 
-void ThreadPool::WorkerThread()
+void ThreadPool::workerThread()
 {
     while (true)
     {

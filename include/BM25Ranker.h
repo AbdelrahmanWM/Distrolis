@@ -11,7 +11,7 @@ class BM25Ranker
 public:
     typedef  std::unordered_map<std::string,double> ScoresDocument;
     static void setRankerParameters(double BM25_K1,double BM25_B,double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT);
-    BM25Ranker(const std::string&database_name,const std::string&documents_collection_name,const InvertedIndex& invertedIndex);
+    BM25Ranker(const std::string&database_name,const std::string&documents_collection_name, InvertedIndex* invertedIndex);
     std::vector<std::pair<std::string,double>> run(const std::string& query_string);
     void setDatabaseName(const std::string&databaseName);
     void setDocumentsCollectionName(const std::string&collectionName);
@@ -40,7 +40,7 @@ private:
     InvertedIndex::document_metadata m_metadata_document;
     std::string m_database_name;
     std::string m_documents_collection_name;
-    InvertedIndex m_invertedIndex;
+    InvertedIndex* m_invertedIndex;
     std::queue<std::string> m_query_phrase_queue;
     static double K1;
     static double B;

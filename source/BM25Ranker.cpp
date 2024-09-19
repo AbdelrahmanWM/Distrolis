@@ -19,7 +19,7 @@ void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRAS
     BM25Ranker::TERM_FREQUENCY_WEIGHT = 1 - EXACT_MATCH_WEIGHT;
 }
 
-BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, const InvertedIndex &invertedIndex)
+BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex* invertedIndex)
     : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{}
 {
     extractInvertedIndexAndMetadata();
@@ -280,10 +280,13 @@ BM25Ranker::ScoresDocument BM25Ranker::documentNormalizeOperation(const ScoresDo
 
 void BM25Ranker::extractInvertedIndexAndMetadata()
 {
-    m_invertedIndex.retrieveExistingIndex();
-    m_invertedIndex.retrieveExistingMetadataDocument();
-    m_term_frequencies = m_invertedIndex.getInvertedIndex();
-    m_metadata_document = m_invertedIndex.getMetadataDocument();
+    m_invertedIndex->retrieveExistingIndex();
+    m_invertedIndex->retrieveExistingMetadataDocument();
+    m_term_frequencies = m_invertedIndex->getInvertedIndex();
+    m_metadata_document = m_invertedIndex->getMetadataDocument();
+    std::cout<<"term frequencies: "<<m_term_frequencies.size()<<'\n';
+    std::cout<<"metadata document: "<<m_metadata_document.total_documents<<'\n';
+    
 }
 
 BM25Ranker::ScoresDocument BM25Ranker::getEmptyScoresDocument()
@@ -389,13 +392,13 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForPhrase(const std::un
 void BM25Ranker::setDatabaseName(const std::string &databaseName)
 {
     m_database_name = databaseName;
-    m_invertedIndex.setDatabaseName(databaseName);
+    m_invertedIndex->setDatabaseName(databaseName);
 }
 
 void BM25Ranker::setDocumentsCollectionName(const std::string &collectionName)
 {
     m_documents_collection_name = collectionName;
-    m_invertedIndex.setDocumentsCollectionName(collectionName);
+    m_invertedIndex->setDocumentsCollectionName(collectionName);
 }
 
 // void BM25Ranker::normalizePhraseBoostEffect()

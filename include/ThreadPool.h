@@ -1,24 +1,27 @@
-#include<functional>
-#include<condition_variable>
-#include<mutex>
-#include<queue>
-#include<thread>
+#ifndef THREADSPOOL_H
+#define THREADSPOOL_H
 
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
-class ThreadPool
-{
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <vector>
+
+class ThreadPool {
 public:
-ThreadPool(size_t threads);
-~ThreadPool();
-void enqueue(std::function<void()> task);
-void WorkerThread();
+    ThreadPool(size_t threads);
+    ~ThreadPool();
+    void enqueue(std::function<void()> task);
+
 private:
-std::vector<std::thread>workers;
-std::queue<std::function<void()>> tasks;
-std::mutex queueMutex;
-std::condition_variable condition;
-bool stop;
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex queueMutex;
+    std::condition_variable condition;
+    bool stop;
+
+    void workerThread();
 };
 
 #endif
