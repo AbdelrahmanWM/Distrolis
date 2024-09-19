@@ -1,4 +1,5 @@
 #include "DataBase.h"
+#include "ThreadPool.h";
 
 DataBase *DataBase::db = nullptr;
 
@@ -27,6 +28,66 @@ DataBase::DataBase(const std::string &connectionString)
     }
 
     bson_destroy(command);
+}
+
+void DataBase::processWordDocuments(std::vector<bson_t *> &documents, std::mutex &documentsMutex, const std::string &term, const std::unordered_map<std::string, std::vector<int>> &map)
+{
+    try
+    {
+        std::cout << std::this_thread::get_id() << "\n";
+        if (term == "")
+            return;
+        bson_t *term_doc = bson_new();
+        if (!term_doc)
+        {
+            std::cerr << "Failed to create BSON document." << std::endl;
+        }
+        bson_t postings_array;
+        BSON_APPEND_ARRAY_BEGIN(term_doc, term.c_str(), &postings_array);
+        // BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
+        int i = 0;
+        for (const auto &[docId, positions] : map)
+        {
+            if (docId == "" || positions.size() == 0)
+                continue;
+            bson_t posting_doc{};
+            std::string key = std::to_string(i++);
+            BSON_APPEND_DOCUMENT_BEGIN(&postings_array, key.c_str(), &posting_doc);
+
+            BSON_APPEND_UTF8(&posting_doc, "docId", docId.c_str());
+
+            bson_t positions_array{};
+            int pos_index{};
+            BSON_APPEND_ARRAY_BEGIN(&posting_doc, "positions", &positions_array);
+
+            for (int pos : positions)
+            {
+                std::string key = std::to_string(pos_index); // Use pos_index without incrementing
+                BSON_APPEND_INT32(&positions_array, key.c_str(), pos);
+                pos_index++;
+            }
+            bson_append_array_end(&posting_doc, &positions_array);
+
+            bson_append_document_end(&postings_array, &posting_doc);
+        }
+        // bson_append_array_end(document, &term_doc);
+        bson_append_array_end(term_doc, &postings_array);
+        {
+            std::lock_guard<std::mutex> lock(documentsMutex);
+            if (term_doc != nullptr)
+            {
+                documents.push_back(term_doc);
+            }
+            else
+            {
+                std::cerr << "Didn't insert the faulty document\n";
+            }
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << ex.what();
+    }
 }
 
 DataBase::~DataBase()
@@ -94,16 +155,12 @@ void DataBase::insertDocument(const bson_t *document, const std::string &databas
 void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::string &database_name, const std::string &collection_name)
 {
     std::lock_guard<std::mutex> lock(dbMutex);
-    std::cout << "HERE\n";
-    std::cout << "HERE\n";
 
     if (documents.size() == 0)
     {
-        std::cout << "HERE\n";
         std::cout << "No documents to insert\n";
         return;
     }
-    std::cout << "HERE\n";
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     bool insertSuccess = false;
@@ -118,6 +175,15 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
 
         std::cout << "Collection obtained successfully." << std::endl;
         std::vector<const bson_t *> documentPointers(documents.begin(), documents.end());
+        std::cout << "HERE\n";
+        for (const bson_t *doc : documentPointers)
+        {
+            if (doc == nullptr)
+            {
+                std::cout << "Found a null document pointer in documentPointers\n";
+                // Handle error
+            }
+        }
         insertSuccess = mongoc_collection_insert_many(collection, documentPointers.data(), documentPointers.size(), nullptr, nullptr, &error);
         std::cout << "HERE\n";
         if (!insertSuccess)
@@ -250,7 +316,6 @@ void DataBase::clearCollection(const std::string &database_name, const std::stri
     try
     {
         std::lock_guard<std::mutex> lock(dbMutex);
-        std::cout << "HERE";
         collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
         if (!collection)
         {
@@ -281,58 +346,24 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unor
 
     // bson_t *document = bson_new();
     std::vector<bson_t *> documents{};
-    // if (!document)
-    // {
-    //     std::cerr << "Failed to create BSON document." << std::endl;
-    //     return;
-    // }
-
+    std::mutex documentsMutex;
     try
     {
-        for (const auto &[term, map] : index)
         {
-            bson_t *term_doc = bson_new();
-            if (!term_doc)
+            ThreadPool thread_pool{5};
+            for (const auto &[term, map] : index)
             {
-                std::cerr << "Failed to create BSON document." << std::endl;
+                thread_pool.enqueue([this, &documents, &documentsMutex, term, map]
+                                    { this->processWordDocuments(documents, documentsMutex, term, map); });
             }
-            bson_t postings_array;
-            BSON_APPEND_ARRAY_BEGIN(term_doc, term.c_str(), &postings_array);
-            // BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
-            int i = 0;
-            for (const auto &[docId, positions] : map)
+        }
+            // insertDocument(document, database_name,collection_name);
+            insertManyDocuments(documents, database_name, collection_name);
+            for (bson_t *document : documents)
             {
-
-                bson_t posting_doc{};
-                std::string key = std::to_string(i++);
-                BSON_APPEND_DOCUMENT_BEGIN(&postings_array, key.c_str(), &posting_doc);
-
-                BSON_APPEND_UTF8(&posting_doc, "docId", docId.c_str());
-
-                bson_t positions_array{};
-                int pos_index{};
-                BSON_APPEND_ARRAY_BEGIN(&posting_doc, "positions", &positions_array);
-
-                for (int pos : positions)
-                {
-                    std::string key = std::to_string(pos_index); // Use pos_index without incrementing
-                    BSON_APPEND_INT32(&positions_array, key.c_str(), pos);
-                    pos_index++;
-                }
-                bson_append_array_end(&posting_doc, &positions_array);
-
-                bson_append_document_end(&postings_array, &posting_doc);
+                bson_destroy(document);
             }
-            // bson_append_array_end(document, &term_doc);
-            bson_append_array_end(term_doc, &postings_array);
-            documents.push_back(term_doc);
-        }
-        // insertDocument(document, database_name,collection_name);
-        insertManyDocuments(documents, database_name, collection_name);
-        for (bson_t *document : documents)
-        {
-            bson_destroy(document);
-        }
+        
     }
     catch (const std::exception &ex)
     {
@@ -369,7 +400,7 @@ void DataBase::markDocumentProcessed(const bson_t *document, const std::string &
         }
         else
         {
-            std::cout << "Document successfully updated." << std::endl;
+            std::cout << std::this_thread::get_id() << std::endl;
         }
     }
     else

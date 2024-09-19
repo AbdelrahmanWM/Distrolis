@@ -7,6 +7,7 @@
 #include <sstream>
 #include <unordered_set>
 #include "DataBase.h"
+#include "ThreadPool.h"
 
 
 
@@ -14,7 +15,7 @@
 class InvertedIndex
 {
 public:
-    InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name);
+    InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name );
     void run(bool clear = false);
     void processDocument(bson_t* document);
     void retrieveExistingMetadataDocument();
@@ -35,8 +36,9 @@ public:
 private:
     
     void addDocument(const std::string docId, std::string &content);
-    
     void extractInvertedIndexDocument(const bson_t*document);
+
+    bson_t* getEmptyMetaDataDocument();
     void saveInvertedIndex();
     void saveMetadataDocument();
     void updateMetadataDocument();
@@ -50,7 +52,8 @@ private:
     std::string m_collection_name;
     std::string m_documents_collection_name;
     std::string m_metadata_collection_name;
-  
+    std::mutex metadataDocumentMutex;
+    std::mutex indexMutex;
 };
 
 #endif
