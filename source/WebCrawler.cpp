@@ -1,11 +1,12 @@
 #include "WebCrawler.h"
+#include "ThreadPool.h"
 
 std::atomic<bool> stopRequested = false;
-
-std::vector<std::string> WebCrawler::m_proxiesList;
+// Just temporarily
+std::vector<std::string> WebCrawler::m_proxies_list;
 
 WebCrawler::WebCrawler(DataBase *&database, const HTMLParser &parser, const std::string &database_name, const std::string &collection_name, const std::string &visitedUrls_collection_name, const bool useProxy, const std::string &proxyAPIUrl, int numberOfThreads)
-	: m_db(database), m_parser(parser), m_frontier(), m_crawled_pages{}, m_visitedUrls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_visitedUrls_collection_name(visitedUrls_collection_name), m_useProxy(useProxy), m_numberOfThreads(numberOfThreads)
+	: m_db(database), m_parser(parser), m_frontier(), m_visited_urls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_visited_urls_collection_name(visitedUrls_collection_name), m_use_proxy(useProxy), m_number_of_threads(numberOfThreads)
 {
 	CURL *curl;
 	curl = curl_easy_init();
@@ -23,36 +24,30 @@ WebCrawler::~WebCrawler()
 }
 void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &seedUrls)
 {
+	m_frontier_limit = maximumNumberOfPagesToCrawl;
+	m_number_of_pages_to_save = 35; // temporarily
+	m_crawled_pages_number = 0;
 	auto start = std::chrono::high_resolution_clock::now();
-	std::cout<<m_visitedUrls.size()<<","<<m_crawled_pages.size()<<"<"<<m_frontier.size()<<","<<stopRequested<<"|\n";
-	m_crawled_pages.reserve(maximumNumberOfPagesToCrawl + 30);
-
 	addSeedUrls(seedUrls);
 	retrieveVisitedUrls(); // when the clear documents is called??
-	std::cout << "Number of threads: " << m_numberOfThreads << "\n";
-	std::vector<std::thread> workers{};
-	for (int i = 0; i < m_numberOfThreads; i++)
+	m_db->clearCollection(m_database_name, m_visited_urls_collection_name);
+	std::cout << "Number of threads: " << m_number_of_threads << "\n";
 	{
-		workers.push_back(std::thread([this, maximumNumberOfPagesToCrawl]
-									  { this->crawl(maximumNumberOfPagesToCrawl); }));
+		ThreadPool threadPool{m_number_of_threads};
+		for (int i = 0; i < m_number_of_threads; i++)
+		{
+			threadPool.enqueue([this, maximumNumberOfPagesToCrawl]
+							   { this->crawl(maximumNumberOfPagesToCrawl); });
+		}
 	}
-	for (int i = 0; i < m_numberOfThreads; i++)
-	{
-		workers[i].join();
-	}
-	m_db->clearCollection(m_database_name, m_visitedUrls_collection_name);
-	if (m_crawled_pages.size() > 0)
-	{
-		m_db->insertManyDocuments(m_crawled_pages, m_database_name, m_collection_name);
-	}
-	std::cout << "visited urls: " << m_visitedUrls.size() << '\n';
+	std::cout << "visited urls: " << m_visited_urls.size() << '\n';
 	saveVisitedUrls();
-	std::cout << "Crawled pages number: " << m_crawled_pages.size() << "\n";
-	m_frontier={};
-	m_crawled_pages={};
-	m_visitedUrls={};
-	stopRequested=false;
-
+	std::cout << "Crawled pages number: " << m_crawled_pages_number << "\n";
+	
+	std::queue<std::string> empty;
+	std::swap(m_frontier,empty);
+	m_visited_urls.clear();
+	stopRequested = false;
 
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -61,17 +56,20 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 {
 	// std::unique_lock<std::mutex> stopLock(m_stopMutex);
-
 	CURL *curl;
+	DataBase db{m_db->getConnectionString()}; // temporarily
 	curl = curl_easy_init();
+	std::vector<bson_t *> crawled_pages{};
+	crawled_pages.reserve(m_number_of_pages_to_save + 5);
 
 	while (!stopRequested)
 	{
-		std::cout << std::this_thread::get_id() << '\n';
+		// std::cout << std::this_thread::get_id() << '\n';
 		std::string url;
 
-		{// Dont believe a lock is necessary here
-			if (m_frontier.empty() || m_crawled_pages.size() >= static_cast<size_t>(maximumNumberOfPagesToCrawl))
+		{ // Dont believe a lock is necessary here
+			std::unique_lock<std::mutex> lock(m_frontier_mutex);
+			if (m_frontier.empty())
 			{
 				stopRequested = true;
 				// m_stopCondition.notify_all();
@@ -79,7 +77,15 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 			}
 		}
 		{
-			std::unique_lock<std::mutex> lock1(m_frontierMutex);
+			std::unique_lock<std::mutex> lock(m_crawled_pages_mutex);
+			if (m_crawled_pages_number >= maximumNumberOfPagesToCrawl)
+			{
+				stopRequested = true;
+				break;
+			}
+		}
+		{
+			std::unique_lock<std::mutex> lock1(m_frontier_mutex);
 
 			url = m_frontier.front();
 			m_frontier.pop();
@@ -92,10 +98,19 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 		{
 			fetchRobotsTxtContent(curl, url);
 		}
-		std::string htmlContent = fetchPage(curl, url, m_useProxy);
+		std::string htmlContent = std::move(fetchPage(curl, url, m_use_proxy));
 		if (htmlContent == "")
 			continue;
-		parsePage(htmlContent, url);
+		parsePage(htmlContent, url, crawled_pages);
+		htmlContent.clear();
+		if (crawled_pages.size() >= m_number_of_pages_to_save)
+		{
+			// std::cout<<"HERE\n";
+			db.insertManyDocuments(crawled_pages, m_database_name, m_collection_name);
+			crawled_pages.clear();
+			crawled_pages.reserve(m_number_of_pages_to_save + 5);
+			// std::cout<<"Crawled: "<<crawled_pages.size()<<"\n";
+		}
 		// {
 		// 	std::unique_lock<std::mutex> lock1(m_frontierMutex);
 		// 	std::unique_lock<std::mutex> lock2(m_crawledPagesMutex);
@@ -106,6 +121,14 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 		// {
 		// 	break;
 		// }
+		if (stopRequested)
+			break; // temporarily
+	}
+	std::cout << "DONE\n";
+	if (crawled_pages.size() > 0)
+	{
+		db.insertManyDocuments(crawled_pages, m_database_name, m_collection_name);
+		crawled_pages.clear();
 	}
 
 	curl_easy_cleanup(curl);
@@ -143,7 +166,7 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 void WebCrawler::clearCrawledDocuments()
 {
 	m_db->clearCollection(m_database_name, m_collection_name); // clear previous crawling history
-	m_db->clearCollection(m_database_name, m_visitedUrls_collection_name);
+	m_db->clearCollection(m_database_name, m_visited_urls_collection_name);
 }
 void WebCrawler::addSeedUrls(std::queue<std::string> &seedUrls)
 {
@@ -153,8 +176,10 @@ void WebCrawler::addSeedUrls(std::queue<std::string> &seedUrls)
 		seedUrls.pop();
 	}
 }
-void WebCrawler::parsePage(const std::string &htmlContent, const std::string &url)
+void WebCrawler::parsePage(const std::string &htmlContent, const std::string &url, std::vector<bson_t *> &crawled_pages)
 {
+	if (stopRequested)
+		return; // temporarily
 	if (htmlContent == "")
 	{
 		return;
@@ -163,7 +188,7 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 	try
 	{
 		// m_parser.extractAndStorePageDetails(htmlContent, url, m_db,m_database_name,m_collection_name);
-		links = m_parser.extractLinksFromHTML(htmlContent);
+		links = std::move(m_parser.extractLinksFromHTML(htmlContent));
 	}
 	catch (std::runtime_error &ex)
 	{
@@ -174,21 +199,28 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 	for (const auto &link : links)
 	{
 
-		absoluteUrl = URLParser::convertToAbsoluteURL(link, url);
+		absoluteUrl = std::move(URLParser::convertToAbsoluteURL(link, url));
 		if (isURLVisited(absoluteUrl) || !URLParser::isAbsoluteURL(absoluteUrl))
 		{
 			continue;
 		}
 		// std::cout << "Link: " << absoluteUrl << '\n';
-		std::unique_lock<std::mutex> lock(m_frontierMutex);
-		m_frontier.push(absoluteUrl);
+
+		std::unique_lock<std::mutex> lock(m_frontier_mutex);
+		// std::cout<<"frontier: "<<m_frontier.size()<<'\n';
+		if (m_frontier.size() <= static_cast<size_t>(m_frontier_limit))
+		{
+			m_frontier.push(absoluteUrl);
+		}
 	}
+	links.clear();
 	if (!stopRequested)
 		markURLAsVisited(url);
+	crawled_pages.push_back(m_parser.getPageDocument(htmlContent, url));
+	// std::cout << "crawled pages: " << crawled_pages.size() << '\n';
 	{
-		std::lock_guard<std::mutex> lock(m_crawledPagesMutex);
-
-		m_crawled_pages.push_back(m_parser.getPageDocument(htmlContent, url));
+		std::unique_lock<std::mutex> lock(m_crawled_pages_mutex);
+		m_crawled_pages_number += 1;
 	}
 }
 std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool useProxy)
@@ -196,8 +228,7 @@ std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool usePr
 	// std::cout << "URL: " << url << '\n';
 	// Checking for url existence for duplication.
 	// Fetching the url
-
-	if (isURLVisited(url))
+	if (stopRequested || isURLVisited(url)) // temporarily
 	{
 		return "";
 	}
@@ -257,14 +288,15 @@ size_t WebCrawler::WriteCallback(void *contents, size_t size, size_t nmemb, void
 
 void WebCrawler::fetchRobotsTxtContent(CURL *curl, const std::string &url)
 {
-	std::string content = fetchPage(curl, URLParser::getRobotsTxtURL(url), m_useProxy);
+	std::string content = std::move(fetchPage(curl, URLParser::getRobotsTxtURL(url), m_use_proxy));
 	std::vector<std::string> links{m_parser.extractRobotsTxtLinks(content)};
 	std::string absoluteURL{};
 	for (const auto &link : links)
 	{
-		absoluteURL = URLParser::convertToAbsoluteURL(link, url);
+		absoluteURL = std::move(URLParser::convertToAbsoluteURL(link, url));
 		markURLAsVisited(absoluteURL);
 	}
+	links.clear();
 }
 
 std::string WebCrawler::getRandomUserAgent()
@@ -281,15 +313,15 @@ bool WebCrawler::isURLVisited(const std::string &absoluteURL)
 
 	std::hash<std::string> hasher{};
 	size_t hashedUrl = hasher(absoluteURL);
-	std::lock_guard<std::mutex> lock(m_visitedUrlsMutex);
-	return m_visitedUrls.find(hashedUrl) != m_visitedUrls.end();
+	std::lock_guard<std::mutex> lock(m_visited_urls_mutex);
+	return m_visited_urls.find(hashedUrl) != m_visited_urls.end();
 }
 
 void WebCrawler::markURLAsVisited(const std::string &absoluteURL)
 {
 	std::hash<std::string> hasher{};
-	std::lock_guard<std::mutex> lock(m_visitedUrlsMutex);
-	m_visitedUrls.insert(hasher(absoluteURL));
+	std::lock_guard<std::mutex> lock(m_visited_urls_mutex);
+	m_visited_urls.insert(hasher(absoluteURL));
 }
 
 void WebCrawler::saveVisitedUrls()
@@ -313,7 +345,7 @@ void WebCrawler::saveVisitedUrls()
 		}
 
 		int index = 0;
-		for (size_t url : m_visitedUrls)
+		for (size_t url : m_visited_urls)
 		{
 			int64_t value = static_cast<int64_t>(url);
 			BSON_APPEND_INT64(array, std::to_string(index).c_str(), value);
@@ -322,7 +354,7 @@ void WebCrawler::saveVisitedUrls()
 
 		BSON_APPEND_ARRAY(document, "visitedUrls", array);
 
-		m_db->insertDocument(document, m_database_name, m_visitedUrls_collection_name);
+		m_db->insertDocument(document, m_database_name, m_visited_urls_collection_name);
 
 		bson_destroy(array);
 	}
@@ -337,7 +369,7 @@ void WebCrawler::saveVisitedUrls()
 
 void WebCrawler::retrieveVisitedUrls()
 {
-	bson_t *document = m_db->getDocument(m_database_name, m_visitedUrls_collection_name);
+	bson_t *document = m_db->getDocument(m_database_name, m_visited_urls_collection_name);
 	if (!document)
 	{
 		std::cerr << "Failed to retrieve BSON document." << std::endl;
@@ -362,7 +394,7 @@ void WebCrawler::retrieveVisitedUrls()
 				while (bson_iter_next(&array_iter))
 				{
 					int64_t url = bson_iter_int64(&array_iter);
-					m_visitedUrls.insert(url);
+					m_visited_urls.insert(url);
 				}
 			}
 			// std::cout << "Visited URLs:" << std::endl;
@@ -390,13 +422,14 @@ void WebCrawler::setDocumentsCollectionName(const std::string &collectionName)
 
 void WebCrawler::setVisitedUrlCollectionName(const std::string &collectionName)
 {
-	m_visitedUrls_collection_name = collectionName;
+	m_visited_urls_collection_name = collectionName;
 }
 
 bool WebCrawler::setNumberOfThreads(int numberOfThreads)
 {
-	if(numberOfThreads>0 && numberOfThreads < static_cast<int>(std::thread::hardware_concurrency())){
-		m_numberOfThreads = numberOfThreads;
+	if (numberOfThreads > 0 && numberOfThreads < static_cast<int>(std::thread::hardware_concurrency()))
+	{
+		m_number_of_threads = numberOfThreads;
 		return true;
 	}
 	return false;
@@ -406,24 +439,24 @@ std::string WebCrawler::getRandomProxy()
 {
 	std::random_device rd;
 	std::mt19937 rng(rd());
-	std::uniform_int_distribution<int> uni(0, m_proxiesList.size() - 1);
-	return m_proxiesList[uni(rng)];
+	std::uniform_int_distribution<int> uni(0, m_proxies_list.size() - 1);
+	return m_proxies_list[uni(rng)];
 }
 
 void WebCrawler::fetchProxies(CURL *curl, const std::string &url)
 {
 	try
 	{
-		m_proxiesList.clear();
+		m_proxies_list.clear();
 		std::string proxies = fetchPage(curl, url, false);
 		std::istringstream stream(proxies);
 		std::string proxy;
 		while (stream >> proxy)
 		{
 			// std::cout << proxy << "\n";
-			m_proxiesList.push_back("http://" + proxy);
+			m_proxies_list.push_back("http://" + proxy);
 		}
-		if (m_proxiesList.empty())
+		if (m_proxies_list.empty())
 		{
 			std::cerr << "No proxies where fetched\n";
 		}

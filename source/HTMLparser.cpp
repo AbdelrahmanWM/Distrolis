@@ -11,7 +11,7 @@ HTMLParser::~HTMLParser()
 }
 bson_t * HTMLParser::getPageDocument(const std::string & htmlContent, const std::string & url) const
 {
-    return createBSONFromDocument(extractElements(htmlContent,url));
+    return std::move(createBSONFromDocument(extractElements(htmlContent,url)));
 }
 void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, const std::string &url, DataBase *&db,const std::string&database_name, const std::string& collection_name) const
 {
@@ -20,7 +20,7 @@ void HTMLParser::extractAndStorePageDetails(const std::string &htmlContent, cons
     {
         documentStructure document = extractElements(htmlContent, url);
 
-        db->insertDocument(createBSONFromDocument(document),database_name,collection_name);
+        db->insertDocument(std::move(createBSONFromDocument(document)),database_name,collection_name);
     }
     catch (std::runtime_error &ex)
     {
@@ -39,7 +39,7 @@ std::vector<std::string> HTMLParser::extractLinksFromHTML(const std::string &htm
     {
         std::cerr << "Error: " << ex.what() << std::endl;
     }
-    return links;
+    return std::move(links);
 }
 std::vector<std::string> HTMLParser::extractRobotsTxtLinks(const std::string & robotsTxt) const
 {
@@ -67,7 +67,7 @@ std::vector<std::string> HTMLParser::extractRobotsTxtLinks(const std::string & r
 
 
     
-    return urls;
+    return std::move(urls);
 }
 
 HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &htmlContent, const std::string &url) const

@@ -1,9 +1,8 @@
 #include "DataBase.h"
-#include "ThreadPool.h";
-
-DataBase *DataBase::db = nullptr;
+#include "ThreadPool.h"
 
 DataBase::DataBase(const std::string &connectionString)
+    : m_connection_string(connectionString)
 {
     mongoc_init();
 
@@ -97,22 +96,6 @@ DataBase::~DataBase()
     {
         mongoc_client_destroy(m_client);
     }
-    mongoc_cleanup();
-}
-
-DataBase *DataBase::getInstance(const std::string &connectionString)
-{
-    if (!db)
-    {
-        db = new DataBase(connectionString);
-    }
-    return db;
-}
-
-void DataBase::destroyInstance()
-{
-    delete db;
-    db = nullptr;
 }
 
 void DataBase::insertDocument(const bson_t *document, const std::string &database_name, const std::string &collection_name)
@@ -152,7 +135,27 @@ void DataBase::insertDocument(const bson_t *document, const std::string &databas
         mongoc_collection_destroy(collection);
     }
 }
-void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::string &database_name, const std::string &collection_name)
+void DataBase::insertOrUpdateManyDocuments(std::vector<bson_t *> documents, const std::string &key_field)
+{
+    std::lock_guard<std::mutex> lock(dbMutex);
+    if (documents.size() == 0)
+    {
+        std::cerr << "No documents to insert\n";
+    }
+    bson_t *query;
+    bson_t *update;
+    bson_t *update_command;
+    bson_error_t error;
+    bool success;
+    try
+    {
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << ex.what();
+    }
+}
+void DataBase::insertManyDocuments(std::vector<bson_t *>& documents, const std::string &database_name, const std::string &collection_name)
 {
     std::lock_guard<std::mutex> lock(dbMutex);
 
@@ -175,7 +178,7 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
 
         std::cout << "Collection obtained successfully." << std::endl;
         std::vector<const bson_t *> documentPointers(documents.begin(), documents.end());
-        std::cout << "HERE\n";
+
         // for (const bson_t *doc : documentPointers)
         // {
         //     if (doc == nullptr)
@@ -185,7 +188,6 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
         //     }
         // }
         insertSuccess = mongoc_collection_insert_many(collection, documentPointers.data(), documentPointers.size(), nullptr, nullptr, &error);
-        std::cout << "HERE\n";
         if (!insertSuccess)
         {
             std::cerr << "Failed to insert documents: " << error.message << std::endl;
@@ -194,6 +196,10 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> documents, const std::s
         {
             std::cout << "Documents inserted successfully." << std::endl;
         }
+        for(bson_t *document: documents){
+            bson_destroy(document);
+        }
+        documents.clear();
     }
     catch (std::exception &ex)
     {
@@ -357,13 +363,12 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unor
                                     { this->processWordDocuments(documents, documentsMutex, term, map); });
             }
         }
-            // insertDocument(document, database_name,collection_name);
-            insertManyDocuments(documents, database_name, collection_name);
-            for (bson_t *document : documents)
-            {
-                bson_destroy(document);
-            }
-        
+        // insertDocument(document, database_name,collection_name);
+        insertManyDocuments(documents, database_name, collection_name);
+        for (bson_t *document : documents)
+        {
+            bson_destroy(document);
+        }
     }
     catch (const std::exception &ex)
     {
@@ -465,4 +470,15 @@ std::string DataBase::extractIndexFromIndexDocument(const bson_t *document)
     }
 
     return docId;
+}
+
+std::string DataBase::getConnectionString()
+{
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return m_connection_string;
+}
+
+void DataBase::destroyConnection()
+{
+    mongoc_cleanup();
 }

@@ -66,12 +66,13 @@ int main(int argc, char*argv[])
 	const std::string connectionString = argv[1];
 	const std::string proxyAPIUrl = argv[2];
 	BM25Ranker::setRankerParameters(BM25K1,BM25B,PHRASE_BOOST,EXACT_MATCH_WEIGHT);
-	DataBase* db = DataBase::getInstance(connectionString);
+	DataBase db {connectionString};
+	DataBase* dbPtr=&db;
 	HTMLParser htmlParser{};
-	WebCrawler webCrawler{db,htmlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
+	WebCrawler webCrawler{dbPtr,htmlParser,DATABASE,DOCUMENTS_COLLECTION,VISITED_URLS_COLLECTION,USE_PROXY,proxyAPIUrl};
 	ThreadPool threadPool{NUMBER_OF_THREADS};
 	
-	InvertedIndex invertedIndex{ db,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
+	InvertedIndex invertedIndex{ dbPtr,DATABASE,INVERTED_INDEX_COLLECTION, DOCUMENTS_COLLECTION, METADATA_COLLECTION};
 
 
 
@@ -102,4 +103,5 @@ int main(int argc, char*argv[])
 
 	SearchEngineServer server{engine};
 	server.start();
+	db.destroyConnection();
 }
