@@ -19,6 +19,7 @@
 bin/
 obj/
 build/
+build_linux/
 
 # env files
 .env
