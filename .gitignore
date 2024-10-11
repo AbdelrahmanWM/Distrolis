@@ -24,7 +24,7 @@ build_linux/
 # env files
 .env
 notes.txt
-
+performance.txt
 # Visual Studio Code
 
 .vscode

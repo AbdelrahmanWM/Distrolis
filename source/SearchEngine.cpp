@@ -24,6 +24,11 @@ void SearchEngine::crawl(int maximumNumberOfPages,std::queue<std::string>& seedU
     return m_webCrawler->run(maximumNumberOfPages,seedUrls); 
 }
 
+void SearchEngine::terminateCrawl(bool clearDocumentsHistory)
+{
+    m_webCrawler->terminate(clearDocumentsHistory);
+}
+
 void SearchEngine::indexDocuments(bool clearExistingInvertedIndexAndMetadata)
 {
     return m_invertedIndex->run(clearExistingInvertedIndexAndMetadata);

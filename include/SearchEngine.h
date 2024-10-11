@@ -18,6 +18,7 @@ SearchEngine(WebCrawler* webCrawler,InvertedIndex* invertedIndex, BM25Ranker* ra
 SearchResultsDocument search(const std::string search_query);
 void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearHistory=false);
 void crawl(int maximumNumberOfPages,std::queue<std::string>& seedUrls);
+void terminateCrawl(bool clearDocumentsHistory=true);
 void indexDocuments(bool clearExistingInvertedIndexAndMetadata=false);
 void setDatabaseAndCollectionsNames(const std::string& databaseName, const std::string& documentsCollectionName, const std::string& visitedUrlsCollectionName, const std::string& invertedIndexCollectionName, const std::string& metadataCollectionName);
 void setDatabaseName(const std::string& newDataBaseName);

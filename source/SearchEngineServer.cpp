@@ -20,6 +20,7 @@ void SearchEngineServer::start()
     CROW_ROUTE(app, "/search").methods(crow::HTTPMethod::Get)(std::bind(&SearchEngineServer::search, this, _1));
     CROW_ROUTE(app, "/setThreadsNumber").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::setThreadsNumber, this, _1));
     CROW_ROUTE(app, "/crawl").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::crawl, this, _1));
+    CROW_ROUTE(app, "/crawl_terminate").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::crawl_terminate, this, _1));
     CROW_ROUTE(app, "/indexDocuments").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::indexDocument, this, _1));
     CROW_ROUTE(app, "/crawlAndIndexDocument").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::crawlAndIndexDocument, this, _1));
     CROW_ROUTE(app, "/setRankerParameters").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::setRankerParameters, this, _1));
@@ -85,10 +86,31 @@ crow::response SearchEngineServer::crawl(const crow::request &req)
 
         std::string numberOfPages = numberOfPagesJSON.dump();
         int num = std::stoi(numberOfPages);
-        std::cout<<"Number: "<<num<<'\n';
+        std::cout << "Number: " << num << '\n';
         m_searchEngine.crawl(num, seed_urls);
         std::string response = "Successfully crawled the pages";
         return crow::response(200, response);
+    }
+    catch (std::exception &ex)
+    {
+        std::string error = "Error " + static_cast<std::string>(ex.what());
+        return crow::response(500, error);
+    }
+}
+
+crow::response SearchEngineServer::crawl_terminate(const crow::request &req)
+{
+    try
+    {
+        auto body = crow::json::load(req.body);
+        if (!body || !body["clearDocumentsHistory"])
+        {
+            return crow::response(400, "Invalid JSON data");
+        }
+        crow::json::wvalue clearHistoryJSON = body["clearDocumentsHistory"];
+        std::string clearDocumentsHistory = clearHistoryJSON.dump();
+        m_searchEngine.terminateCrawl((bool)std::stoi(clearDocumentsHistory));
+        return crow::response(200, "Successfully terminated crawl process");
     }
     catch (std::exception &ex)
     {
