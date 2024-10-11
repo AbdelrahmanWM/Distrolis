@@ -2,6 +2,8 @@
 #include "ThreadPool.h"
 
 std::atomic<bool> stopRequested = false;
+std::atomic<bool> clearRecord=false;
+int maximumNumberOfPages;
 // Just temporarily
 std::vector<std::string> WebCrawler::m_proxies_list;
 
@@ -25,15 +27,17 @@ WebCrawler::~WebCrawler()
 void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &seedUrls)
 {
 	m_frontier_limit = maximumNumberOfPagesToCrawl;
-	m_number_of_pages_to_save = 35; // temporarily
+	maximumNumberOfPages = maximumNumberOfPagesToCrawl;
+	m_number_of_pages_to_save = 100; // temporarily
 	m_crawled_pages_number = 0;
+	clearRecord=false;
 	auto start = std::chrono::high_resolution_clock::now();
 	addSeedUrls(seedUrls);
 	retrieveVisitedUrls(); // when the clear documents is called??
 	m_db->clearCollection(m_database_name, m_visited_urls_collection_name);
 	std::cout << "Number of threads: " << m_number_of_threads << "\n";
 	{
-		ThreadPool threadPool{m_number_of_threads};
+		ThreadPool threadPool{static_cast<size_t>(m_number_of_threads)};
 		for (int i = 0; i < m_number_of_threads; i++)
 		{
 			threadPool.enqueue([this, maximumNumberOfPagesToCrawl]
@@ -43,15 +47,22 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 	std::cout << "visited urls: " << m_visited_urls.size() << '\n';
 	saveVisitedUrls();
 	std::cout << "Crawled pages number: " << m_crawled_pages_number << "\n";
-	
-	std::queue<std::string> empty;
-	std::swap(m_frontier,empty);
+
+	std::deque<std::string> empty;
+	std::swap(m_frontier, empty);
 	m_visited_urls.clear();
 	stopRequested = false;
-
+	if(clearRecord){ // in case a termination happens
+		clearCrawledDocuments();
+	}
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 	std::cout << "Time taken: " << duration.count() << " seconds\n";
+}
+void WebCrawler::terminate(bool clearHistory)
+{
+	stopRequested=true;
+	clearRecord=clearHistory;
 }
 void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 {
@@ -71,97 +82,56 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 			std::unique_lock<std::mutex> lock(m_frontier_mutex);
 			if (m_frontier.empty())
 			{
-				stopRequested = true;
-				// m_stopCondition.notify_all();
-				break;
-			}
-		}
-		{
-			std::unique_lock<std::mutex> lock(m_crawled_pages_mutex);
-			if (m_crawled_pages_number >= maximumNumberOfPagesToCrawl)
-			{
+				// m_stop_condition.wait_for(lock, std::chrono::seconds(1), [this]
+				// 						  { return !m_frontier.empty(); });
+				// if (m_frontier.empty())
+				// {
 				stopRequested = true;
 				break;
 			}
-		}
-		{
-			std::unique_lock<std::mutex> lock1(m_frontier_mutex);
-
 			url = m_frontier.front();
-			m_frontier.pop();
-			if (isURLVisited(url))
-			{ // if already visited
-				continue;
-			}
+			m_frontier.pop_front();
+			// }
+		}
+		if (isURLVisited(url))
+		{ // if already visited
+			continue;
 		}
 		if (URLParser::isDomainURL(url))
 		{
 			fetchRobotsTxtContent(curl, url);
 		}
-		std::string htmlContent = std::move(fetchPage(curl, url, m_use_proxy));
+		std::string htmlContent = fetchPage(curl, url, m_use_proxy);
 		if (htmlContent == "")
 			continue;
 		parsePage(htmlContent, url, crawled_pages);
 		htmlContent.clear();
-		if (crawled_pages.size() >= m_number_of_pages_to_save)
+		if (crawled_pages.size() >= static_cast<size_t>(m_number_of_pages_to_save))
 		{
-			// std::cout<<"HERE\n";
 			db.insertManyDocuments(crawled_pages, m_database_name, m_collection_name);
+			for (bson_t *document : crawled_pages)
+			{
+				bson_destroy(document);
+			}
 			crawled_pages.clear();
 			crawled_pages.reserve(m_number_of_pages_to_save + 5);
-			// std::cout<<"Crawled: "<<crawled_pages.size()<<"\n";
 		}
-		// {
-		// 	std::unique_lock<std::mutex> lock1(m_frontierMutex);
-		// 	std::unique_lock<std::mutex> lock2(m_crawledPagesMutex);
-		// 	std::cout << "frontier: " << m_frontier.size() << '\n';
-		// 	std::cout << "pages fetched: " << m_crawled_pages.size() << '\n';
-		// }
-		// if (stopRequested)
-		// {
-		// 	break;
-		// }
 		if (stopRequested)
+		{
 			break; // temporarily
+		}
 	}
-	std::cout << "DONE\n";
 	if (crawled_pages.size() > 0)
 	{
 		db.insertManyDocuments(crawled_pages, m_database_name, m_collection_name);
+		for (bson_t *document : crawled_pages)
+		{
+			bson_destroy(document);
+		}
 		crawled_pages.clear();
 	}
-
 	curl_easy_cleanup(curl);
 }
-
-// while (!m_frontier.empty() && m_crawled_pages.size() < static_cast<size_t>(maximumNumberOfPagesToCrawl))
-// {
-// 	const std::string &url = m_frontier.front();
-// 	m_urlParser.setBaseURL(url);
-// 	if (isURLVisited(url))
-// 	{ // if already visited
-// 		m_frontier.pop();
-// 		continue;
-// 	}
-// if (m_urlParser.isDomainURL())
-// {
-// 	fetchRobotsTxtContent();
-// }
-
-// std::string htmlContent = fetchPage(url, m_useProxy);
-// parsePage(htmlContent, url);
-// m_frontier.pop();
-// std::cout << "frontier: " << m_frontier.size() << '\n';
-// std::cout << "pages fetched: " << m_crawled_pages.size() << '\n';
-// }
-
-// m_db->clearCollection(m_database_name, m_visitedUrls_collection_name);
-// if (m_crawled_pages.size() > 0)
-// {
-// 	m_db->insertManyDocuments(m_crawled_pages, m_database_name, m_collection_name);
-// }
-// std::cout << "visited urls: " << m_visitedUrls.size() << '\n';
-// saveVisitedUrls();
 
 void WebCrawler::clearCrawledDocuments()
 {
@@ -172,7 +142,7 @@ void WebCrawler::addSeedUrls(std::queue<std::string> &seedUrls)
 {
 	while (!seedUrls.empty())
 	{
-		m_frontier.push(URLParser::normalizeURL(seedUrls.front()));
+		m_frontier.push_back(URLParser::normalizeURL(seedUrls.front()));
 		seedUrls.pop();
 	}
 }
@@ -195,7 +165,7 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 		std::cerr << "Error: " << ex.what() << '\n';
 	}
 	std::string absoluteUrl{};
-
+	std::vector<std::string> urlsToAdd{};
 	for (const auto &link : links)
 	{
 
@@ -204,15 +174,17 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 		{
 			continue;
 		}
-		// std::cout << "Link: " << absoluteUrl << '\n';
-
-		std::unique_lock<std::mutex> lock(m_frontier_mutex);
-		// std::cout<<"frontier: "<<m_frontier.size()<<'\n';
-		if (m_frontier.size() <= static_cast<size_t>(m_frontier_limit))
 		{
-			m_frontier.push(absoluteUrl);
+			std::unique_lock<std::mutex> lock(m_frontier_mutex);
+
+			if (m_frontier.size() <= static_cast<size_t>(m_frontier_limit))
+			{
+				m_frontier.push_back(absoluteUrl);
+			}
 		}
+		// urlsToAdd.push_back(absoluteUrl);
 	}
+
 	links.clear();
 	if (!stopRequested)
 		markURLAsVisited(url);
@@ -221,6 +193,10 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 	{
 		std::unique_lock<std::mutex> lock(m_crawled_pages_mutex);
 		m_crawled_pages_number += 1;
+		if (m_crawled_pages_number >= maximumNumberOfPages)
+		{
+			stopRequested = true;
+		}
 	}
 }
 std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool useProxy)
@@ -288,8 +264,9 @@ size_t WebCrawler::WriteCallback(void *contents, size_t size, size_t nmemb, void
 
 void WebCrawler::fetchRobotsTxtContent(CURL *curl, const std::string &url)
 {
-	std::string content = std::move(fetchPage(curl, URLParser::getRobotsTxtURL(url), m_use_proxy));
+	std::string content = fetchPage(curl, URLParser::getRobotsTxtURL(url), m_use_proxy);
 	std::vector<std::string> links{m_parser.extractRobotsTxtLinks(content)};
+	content.clear();
 	std::string absoluteURL{};
 	for (const auto &link : links)
 	{
@@ -408,6 +385,7 @@ void WebCrawler::retrieveVisitedUrls()
 			std::cerr << "Expected 'visitedUrls' to be an array." << std::endl;
 		}
 	}
+	bson_destroy(document);
 }
 
 void WebCrawler::setDatabaseName(const std::string &databaseName)

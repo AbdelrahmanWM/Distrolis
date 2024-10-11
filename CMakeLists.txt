@@ -50,6 +50,7 @@ set(SOURCES
     source/SearchEngineServer.cpp
     source/DocumentRetriever.cpp
     source/ThreadPool.cpp
+    source/SeedURLS.cpp
 )
 
 # Add the executable

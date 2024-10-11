@@ -1,28 +1,27 @@
 #include "SeedURLS.h"
 #include <iostream>
 
-std::queue<std::string> SEEDURLS::readSeedUrls(std::string fileRelativePath)
+std::queue<std::string> SeedURLS::readSeedUrls(std::string fileRelativePath)
 {
     std::queue<std::string> seedUrls{};
     std::ifstream myFile;
     myFile.open(fileRelativePath);
     std::string url;
-    try
+    if (!myFile.is_open())
     {
-        if (myFile.is_open())
+        std::cerr << "Error opening file: " << fileRelativePath << '\n';
+        return seedUrls;
+    }
+    while (std::getline(myFile, url))
+    {
+        if (!url.empty())
         {
-            while (myFile)
-            {
-                std::getline(myFile, url);
-                seedUrls.push(url);
-            }
+            seedUrls.push(url);
         }
     }
-    catch (std::exception &e)
+    if (myFile.bad())
     {
-        std::cerr << e.what();
+        std::cerr << "Error reading from file: " << fileRelativePath << std::endl;
     }
-
-    myFile.close();
     return seedUrls;
 }

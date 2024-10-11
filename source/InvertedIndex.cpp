@@ -10,9 +10,9 @@ InvertedIndex::InvertedIndex(DataBase *&db, const std::string &database_name, co
 void InvertedIndex::run(bool clear)
 {
     std::vector<bson_t *> documents{};
-    m_index={};
-    m_iteration_metadata={};
-    m_document_metadata={};
+    m_index = {};
+    m_iteration_metadata = {};
+    m_document_metadata = {};
     try
     {
         // m_index = m_db -> getDocument(m_database_name,m_collection_name);
@@ -23,19 +23,20 @@ void InvertedIndex::run(bool clear)
             retrieveExistingMetadataDocument();
         }
         documents = m_db->getAllDocuments(m_database_name, m_documents_collection_name, BCON_NEW("processed", BCON_BOOL(false)));
-        if(documents.size()==0){
-            std::cout<<"No \"un-processed\" documents found to index\n";
+        if (documents.size() == 0)
+        {
+            std::cout << "No \"un-processed\" documents found to index\n";
             return;
         }
         // std::cout << "size: " << documents.size() << '\n';
         m_iteration_metadata.total_documents += documents.size();
         {
-            std::cout<<std::thread::hardware_concurrency()<<"\n";
+            std::cout << std::thread::hardware_concurrency() << "\n";
             ThreadPool thread_pool{5};
             for (auto document : documents)
             {
                 thread_pool.enqueue([this, document]
-                                      { this->processDocument(document); });
+                                    { this->processDocument(document); });
             }
         }
         updateMetadataDocument();
@@ -88,9 +89,9 @@ void InvertedIndex::addDocument(const std::string docId, std::string &content)
     }
 }
 
-bson_t* InvertedIndex::getEmptyMetaDataDocument()
+bson_t *InvertedIndex::getEmptyMetaDataDocument()
 {
-    
+
     bson_t *bson = bson_new();
 
     try
@@ -111,46 +112,58 @@ bson_t* InvertedIndex::getEmptyMetaDataDocument()
 }
 void InvertedIndex::retrieveExistingMetadataDocument()
 {
-    bson_t* document = m_db->getDocument(m_database_name,m_metadata_collection_name);
-    if(document==nullptr){
-        document=getEmptyMetaDataDocument();
+    bson_t *document = m_db->getDocument(m_database_name, m_metadata_collection_name);
+    if (document == nullptr)
+    {
+        document = getEmptyMetaDataDocument();
     }
     bson_iter_t iter;
-    if(!bson_iter_init(&iter,document)){
-        std::cerr<<"Failed to initialize BSON iterator."<<std::endl;
+    if (!bson_iter_init(&iter, document))
+    {
+        std::cerr << "Failed to initialize BSON iterator." << std::endl;
         return;
     }
-    while(bson_iter_next(&iter)){
-        if(strcmp(bson_iter_key(&iter),"total_documents") == 0){
+    while (bson_iter_next(&iter))
+    {
+        if (strcmp(bson_iter_key(&iter), "total_documents") == 0)
+        {
             m_document_metadata.total_documents = bson_iter_int64(&iter);
         }
-        if(strcmp(bson_iter_key(&iter),"average_doc_length") == 0){
+        if (strcmp(bson_iter_key(&iter), "average_doc_length") == 0)
+        {
             m_document_metadata.average_doc_length = bson_iter_double(&iter);
         }
-        if(strcmp(bson_iter_key(&iter),"doc_lengths") == 0){
+        if (strcmp(bson_iter_key(&iter), "doc_lengths") == 0)
+        {
             bson_iter_t doc_iter;
-            bson_iter_recurse(&iter,&doc_iter);
+            bson_iter_recurse(&iter, &doc_iter);
 
-            while(bson_iter_next(&doc_iter)){
+            while (bson_iter_next(&doc_iter))
+            {
 
-                int length= bson_iter_int64(&doc_iter);
-                auto documentId =bson_iter_key(&doc_iter); 
+                int length = bson_iter_int64(&doc_iter);
+                auto documentId = bson_iter_key(&doc_iter);
                 // std::cout<<documentId<<","<<length<<"\n";
-                m_document_metadata.doc_lengths[documentId] = length ;
+                m_document_metadata.doc_lengths[documentId] = length;
             }
         }
     }
+    bson_destroy(document);
 }
-
 
 void InvertedIndex::retrieveExistingIndex()
 {
     std::vector<bson_t *> documents = m_db->getAllDocuments(m_database_name, m_collection_name);
 
-    for (const bson_t *document : documents)
+    for (bson_t *document : documents)
     {
         InvertedIndex::extractInvertedIndexDocument(document);
     }
+    for (auto document : documents)
+    {
+        bson_destroy(document);
+    }
+    documents.clear();
 }
 
 std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> InvertedIndex::getInvertedIndex()
@@ -158,7 +171,7 @@ std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>
     return m_index;
 }
 
-void InvertedIndex::extractInvertedIndexDocument(const bson_t *document)
+void InvertedIndex::extractInvertedIndexDocument(bson_t *&document)
 {
     bson_iter_t iter;
     if (!bson_iter_init(&iter, document))
@@ -239,7 +252,6 @@ void InvertedIndex::saveMetadataDocument()
     m_db->clearCollection(m_database_name, m_metadata_collection_name);
     m_db->insertDocument(bson, m_database_name, m_metadata_collection_name);
 }
-
 
 void InvertedIndex::updateMetadataDocument()
 

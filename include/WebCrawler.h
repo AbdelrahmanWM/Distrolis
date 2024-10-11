@@ -1,8 +1,9 @@
-#ifndef WEBCRAWLER_H
-#define WEBCRAWLER_H
+#ifndef webcrawler_h
+#define webcrawler_h
 
 #include <string>
 #include <queue>
+#include <deque>
 #include <curl/curl.h>
 #include <iostream>
 #include <random>
@@ -10,8 +11,8 @@
 #include <thread>
 #include <condition_variable>
 #include <unordered_set>
-#include "HTMLParser.h"
-#include "URLParser.h"
+#include "htmlparser.h"
+#include "urlparser.h"
 
 class WebCrawler
 {
@@ -19,6 +20,7 @@ public:
 	WebCrawler(DataBase *&database, const HTMLParser &parser, const std::string &database_name, const std::string &collection_name, const std::string &visitedUrls_collection_name, const bool useProxy, const std::string &proxyAPIUrl = "", int numberOfThreads = 1);
 	~WebCrawler();
 	void run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &seedUrl);
+    void terminate(bool clearHistory=true);
 
 	void crawl(int maximumNumberOfPagesToCrawl);
 	void clearCrawledDocuments();
@@ -26,6 +28,7 @@ public:
 	void setDocumentsCollectionName(const std::string &collectionName);
 	void setVisitedUrlCollectionName(const std::string &collectionName);
 	bool setNumberOfThreads(int numberOfThreads);
+
 
 private:
 	void addSeedUrls(std::queue<std::string> &seedUrls);
@@ -44,7 +47,7 @@ private:
 
 	DataBase *&m_db;
 	const HTMLParser &m_parser;
-	std::queue<std::string> m_frontier;
+	std::deque<std::string> m_frontier;
 	int m_crawled_pages_number;
 	std::unordered_set<size_t> m_visited_urls;
 	std::string m_database_name;

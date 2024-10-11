@@ -36,7 +36,7 @@ public:
 private:
     
     void addDocument(const std::string docId, std::string &content);
-    void extractInvertedIndexDocument(const bson_t*document);
+    void extractInvertedIndexDocument(bson_t*&document);
 
     bson_t* getEmptyMetaDataDocument();
     void saveInvertedIndex();

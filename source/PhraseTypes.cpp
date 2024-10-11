@@ -6,21 +6,6 @@ std::regex combined_pattern{
     std::regex_constants::icase
 };
 
-// PhraseType StringToPhraseType(const std::string& string)
-// {
-//     if(std::regex_match(string,phrase_pattern)){
-//         return PhraseType::PHRASE;
-//     }
-//     if(std::regex_match(string,logical_operations_pattern)){
-//         return PhraseType::LOGICAL_OPERATION;
-//     }
-//     if(std::regex_match(string,other_pattern)){
-//         return PhraseType::TERM;
-//     }
-    
-//     return PhraseType();
-// }
-
 LogicalOperation GetLogicalOperation(const std::string string)
 {   
     std::regex and_pattern{R"(AND)", std::regex_constants::icase};
