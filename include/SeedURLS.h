@@ -3,7 +3,7 @@
 #include <queue>
 #include <string>
 #include <fstream>
-class SEEDURLS
+class SeedURLS
 {
 public:
     static std::queue<std::string> readSeedUrls(std::string fileRelativePath);
