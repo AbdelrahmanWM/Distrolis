@@ -2,7 +2,7 @@
 #include "ThreadPool.h"
 
 std::atomic<bool> stopRequested = false;
-std::atomic<bool> clearRecord=false;
+std::atomic<bool> clearRecord = false;
 int maximumNumberOfPages;
 // Just temporarily
 std::vector<std::string> WebCrawler::m_proxies_list;
@@ -11,12 +11,13 @@ WebCrawler::WebCrawler(DataBase *&database, const HTMLParser &parser, const std:
 	: m_db(database), m_parser(parser), m_frontier(), m_visited_urls{}, m_database_name{database_name}, m_collection_name{collection_name}, m_visited_urls_collection_name(visitedUrls_collection_name), m_use_proxy(useProxy), m_number_of_threads(numberOfThreads)
 {
 	CURL *curl;
+	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
 	if (useProxy)
 	{
 		fetchProxies(curl, proxyAPIUrl);
 	}
-	curl_global_init(CURL_GLOBAL_ALL);
+
 	curl_easy_cleanup(curl);
 }
 
@@ -28,9 +29,9 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 {
 	m_frontier_limit = maximumNumberOfPagesToCrawl;
 	maximumNumberOfPages = maximumNumberOfPagesToCrawl;
-	m_number_of_pages_to_save = 100; // temporarily
+	m_number_of_pages_to_save = std::min(1000,(2*maximumNumberOfPages/m_number_of_threads));
 	m_crawled_pages_number = 0;
-	clearRecord=false;
+	clearRecord = false;
 	auto start = std::chrono::high_resolution_clock::now();
 	addSeedUrls(seedUrls);
 	retrieveVisitedUrls(); // when the clear documents is called??
@@ -52,7 +53,8 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 	std::swap(m_frontier, empty);
 	m_visited_urls.clear();
 	stopRequested = false;
-	if(clearRecord){ // in case a termination happens
+	if (clearRecord)
+	{ // in case a termination happens
 		clearCrawledDocuments();
 	}
 	auto end = std::chrono::high_resolution_clock::now();
@@ -61,8 +63,8 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 }
 void WebCrawler::terminate(bool clearHistory)
 {
-	stopRequested=true;
-	clearRecord=clearHistory;
+	stopRequested = true;
+	clearRecord = clearHistory;
 }
 void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 {
@@ -201,14 +203,10 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 }
 std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool useProxy)
 {
-	// std::cout << "URL: " << url << '\n';
-	// Checking for url existence for duplication.
-	// Fetching the url
 	if (stopRequested || isURLVisited(url)) // temporarily
 	{
 		return "";
 	}
-
 	CURLcode res;
 	std::string readBuffer;
 	if (!curl)
@@ -226,7 +224,6 @@ std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool usePr
 	if (res != CURLE_OK)
 	{
 		std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-		std::cout << url << '\n';
 
 		if (useProxy)
 		{
@@ -253,7 +250,6 @@ std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool usePr
 			}
 		}
 	}
-
 	return readBuffer;
 }
 size_t WebCrawler::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)

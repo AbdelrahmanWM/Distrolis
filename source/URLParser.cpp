@@ -18,6 +18,12 @@ bool URLParser::isAbsoluteURL(const std::string &url)
     return std::regex_search(url, urlPattern) && isValidTLD(url);
 }
 
+bool URLParser::isURL(const std::string &url)
+{
+    std::regex url_pattern(R"((https?:\/\/)?([a-zA-Z0-9.-]+)(\/[^\s]*)?)");
+    return std::regex_search(url,url_pattern);
+}
+
 bool URLParser::isProtocolRelativeURL(const std::string& url) {
     return url.find("//") == 0;
 }

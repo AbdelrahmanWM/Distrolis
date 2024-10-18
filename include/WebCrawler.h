@@ -28,12 +28,11 @@ public:
 	void setDocumentsCollectionName(const std::string &collectionName);
 	void setVisitedUrlCollectionName(const std::string &collectionName);
 	bool setNumberOfThreads(int numberOfThreads);
-
+	std::string fetchPage(CURL *curl, const std::string &url, bool useProxy = true);
 
 private:
 	void addSeedUrls(std::queue<std::string> &seedUrls);
 	void parsePage(const std::string &htmlContent, const std::string &url, std::vector<bson_t *> &crawled_pages);
-	std::string fetchPage(CURL *curl, const std::string &url, bool useProxy = true);
 	static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 	static std::string getRandomUserAgent();
 	static std::string getRandomProxy();

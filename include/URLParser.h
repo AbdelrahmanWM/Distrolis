@@ -11,7 +11,7 @@ public:
 	static std::string getRobotsTxtURL(const std::string& base_url);
 	static std::string normalizeURL(const std::string& url);
 	static bool isAbsoluteURL(const std::string& url);
-
+    static bool isURL(const std::string& url);
 
 private:
 

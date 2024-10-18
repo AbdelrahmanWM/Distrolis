@@ -153,7 +153,7 @@ void InvertedIndex::retrieveExistingMetadataDocument()
 
 void InvertedIndex::retrieveExistingIndex()
 {
-    std::vector<bson_t *> documents = m_db->getAllDocuments(m_database_name, m_collection_name);
+    std::vector<bson_t *> documents = std::move(m_db->getAllDocuments(m_database_name, m_collection_name));
 
     for (bson_t *document : documents)
     {

@@ -19,8 +19,8 @@ static const double BM25K1 = 1.5;
 static const double BM25B = 0.75;
 static const double PHRASE_BOOST = 1.35;
 static const double EXACT_MATCH_WEIGHT = 0.6;
-// static std::queue<std::string> seed_urls{SeedURLS::readSeedUrls("../seedUrls.txt")};
-// ({
+static std::queue<std::string>seed_url /*{SeedURLS::readSeedUrls("../seedUrls.txt")};*/
+({
 // 	// "http://localhost:3000/doc1",
 // 	// "http://localhost:3000/doc2",
 // 	// "http://localhost:3000/doc3",
@@ -44,16 +44,16 @@ static const double EXACT_MATCH_WEIGHT = 0.6;
 //     "https://www.polygon.com",
 //     "https://www.scientificamerican.com"
 //     // "https://www.coursera.org",
-//     // "https://www.edx.org",
-//     // "https://www.udemy.com",
-//     // "https://www.academia.edu",
-//     // "https://www.open.edu",
-//     // "https://www.scholarly.org",
-//     // "https://www.ted.com",
+    "https://www.edx.org",
+    "https://www.udemy.com",
+    "https://www.academia.edu",
+    "https://www.open.edu",
+    "https://www.scholarly.org",
+    "https://www.ted.com",
 //     // "https://www.wolframalpha.com",
 //     // "https://www.codecademy.com"
 
-// });
+});
 int main(int argc, char *argv[])
 {
 
