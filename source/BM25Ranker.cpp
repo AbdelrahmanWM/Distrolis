@@ -280,9 +280,8 @@ BM25Ranker::ScoresDocument BM25Ranker::documentNormalizeOperation(const ScoresDo
 
 void BM25Ranker::extractInvertedIndexAndMetadata()
 {
-    m_invertedIndex->retrieveExistingIndex();
     m_invertedIndex->retrieveExistingMetadataDocument();
-    m_term_frequencies = m_invertedIndex->getInvertedIndex();
+    m_term_frequencies = m_invertedIndex->retrieveExistingIndex();
     m_metadata_document = m_invertedIndex->getMetadataDocument();
     std::cout<<"term frequencies: "<<m_term_frequencies.size()<<'\n';
     std::cout<<"metadata document: "<<m_metadata_document.total_documents<<'\n';

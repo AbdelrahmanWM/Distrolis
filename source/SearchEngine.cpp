@@ -79,7 +79,7 @@ void SearchEngine::setRankerParameters(double BM25_K1, double BM25_B, double PHR
 
 bool SearchEngine::setNumberOfThreads(int numberOfThreads)
 {
-    return m_webCrawler->setNumberOfThreads(numberOfThreads);
+    return m_webCrawler->setNumberOfThreads(numberOfThreads)&&m_invertedIndex->setNumberOfThreads(numberOfThreads);
 }
 
 void SearchEngine::clearCrawlHistory()
