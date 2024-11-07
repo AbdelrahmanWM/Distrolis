@@ -33,7 +33,7 @@ void DataBase::processWordDocuments(std::vector<std::pair<bson_t *, bson_t *>> &
 {
     try
     {
-        std::cout << std::this_thread::get_id() << "\n";
+        // std::cout << std::this_thread::get_id() << "\n";
         if (term.empty())
             return;
         bson_t *filter = BCON_NEW("term", BCON_UTF8(term.c_str()));
@@ -66,13 +66,13 @@ void DataBase::processWordDocuments(std::vector<std::pair<bson_t *, bson_t *>> &
 
             bson_append_document_end(postings_array, &posting_doc);
         }
-        bson_t*update=bson_new();
+        bson_t *update = bson_new();
         bson_t documents_push, each_array;
-        BSON_APPEND_DOCUMENT_BEGIN(update,"$push",&documents_push);
-        BSON_APPEND_DOCUMENT_BEGIN(&documents_push,"documents",&each_array);
-        BSON_APPEND_ARRAY(&each_array,"$each",postings_array);
-        bson_append_document_end(&documents_push,&each_array);
-        bson_append_document_end(update,&documents_push);
+        BSON_APPEND_DOCUMENT_BEGIN(update, "$push", &documents_push);
+        BSON_APPEND_DOCUMENT_BEGIN(&documents_push, "documents", &each_array);
+        BSON_APPEND_ARRAY(&each_array, "$each", postings_array);
+        bson_append_document_end(&documents_push, &each_array);
+        bson_append_document_end(update, &documents_push);
 
         if (update != nullptr)
         {
@@ -194,13 +194,17 @@ void DataBase::insertManyDocuments(std::vector<bson_t *> &documents, const std::
 }
 void DataBase::insertOrUpdateManyDocuments(std::vector<std::pair<bson_t *, bson_t *>> &filterAndUpdateDocuments, const std::string &database_name, const std::string &collection_name)
 {
-  std::lock_guard<std::mutex> lock(dbMutex);
-
+    // std::lock_guard<std::mutex> lock(dbMutex);
     if (filterAndUpdateDocuments.empty())
     {
         std::cout << "No documents to insert or update\n";
         return;
     }
+
+    bson_t *opts;
+    opts = bson_new();
+    BSON_APPEND_BOOL(opts, "ordered", false);
+
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     try
@@ -211,23 +215,21 @@ void DataBase::insertOrUpdateManyDocuments(std::vector<std::pair<bson_t *, bson_
             std::cerr << "Failed to get collection: " << collection_name << std::endl;
             return;
         }
-        
         std::cout << "Collection obtained successfully." << std::endl;
-        mongoc_bulk_operation_t* bulk=mongoc_collection_create_bulk_operation_with_opts(collection,NULL);
-        for(auto [filter,update]: filterAndUpdateDocuments){
-            mongoc_bulk_operation_update_one_with_opts(bulk,filter,update,BCON_NEW("upsert",BCON_BOOL(true)),NULL);
+        mongoc_bulk_operation_t *bulk = mongoc_collection_create_bulk_operation_with_opts(collection, opts);
+        for (auto [filter, update] : filterAndUpdateDocuments)
+        {
+            mongoc_bulk_operation_update_one_with_opts(bulk, filter, update, BCON_NEW("upsert", BCON_BOOL(true)), NULL);
         }
-   
-       
-        if (!mongoc_bulk_operation_execute(bulk,NULL,&error))
+        if (!mongoc_bulk_operation_execute(bulk, NULL, &error))
         {
             std::cerr << "Failed to insert/update documents: " << error.message << std::endl;
         }
         else
         {
-            std::cout << "Documents inserted successfully." << std::endl;
+            std::cout << "Documents inserted/updated successfully." << std::endl;
         }
-        for (auto[filter,update] : filterAndUpdateDocuments)
+        for (auto [filter, update] : filterAndUpdateDocuments)
         {
             bson_destroy(filter);
             bson_destroy(update);
@@ -242,7 +244,7 @@ void DataBase::insertOrUpdateManyDocuments(std::vector<std::pair<bson_t *, bson_
     if (collection)
     {
         mongoc_collection_destroy(collection);
-    }  
+    }
 }
 bson_t *DataBase::getDocument(const std::string &database_name, const std::string &collection_name)
 {
@@ -329,8 +331,8 @@ std::vector<bson_t *> DataBase::getAllDocuments(const std::string &database_name
 
 std::vector<bson_t *> DataBase::getLimitedDocuments(const std::string &database_name, const std::string &collection_name, int limit, bson_t *filters)
 {
-    bson_t* opts=bson_new();
-    BSON_APPEND_INT64(opts,"limit",limit);
+    bson_t *opts = bson_new();
+    BSON_APPEND_INT64(opts, "limit", limit);
     mongoc_collection_t *collection = nullptr;
     bson_error_t error;
     try
@@ -339,27 +341,30 @@ std::vector<bson_t *> DataBase::getLimitedDocuments(const std::string &database_
         if (!collection)
         {
             std::cerr << "Failed to get collection: " << collection_name << std::endl;
-            return std::vector<bson_t*>{};
+            return std::vector<bson_t *>{};
         }
-        mongoc_cursor_t* cursor = mongoc_collection_find_with_opts(collection,filters,opts,NULL);
-        std::vector<bson_t*>documents;
-        const bson_t* doc;
+        mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(collection, filters, opts, NULL);
+        std::vector<bson_t *> documents;
+        const bson_t *doc;
         bson_error_t error;
-        while(mongoc_cursor_next(cursor,&doc)){
-            bson_t* copy = bson_copy(doc);
+        while (mongoc_cursor_next(cursor, &doc))
+        {
+            bson_t *copy = bson_copy(doc);
             documents.push_back(copy);
         }
-        if(mongoc_cursor_error(cursor,&error)){
-            std::cerr<<"Cursor error: "<<error.message<<"\n";
+        if (mongoc_cursor_error(cursor, &error))
+        {
+            std::cerr << "Cursor error: " << error.message << "\n";
         }
         bson_destroy(filters);
         bson_destroy(opts);
         mongoc_cursor_destroy(cursor);
         mongoc_collection_destroy(collection);
         return documents;
-
-    }catch(std::exception& ex){
-        std::cerr<<ex.what();
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << ex.what();
     }
 }
 
@@ -477,35 +482,43 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unor
     // bson_destroy(document);
 }
 
-void DataBase::markDocumentsProcessed(std::vector<bson_t *>&documents, const std::string &database_name, const std::string &collection_name)
+void DataBase::markDocumentsProcessed(std::vector<bson_t *> &documents, const std::string &database_name, const std::string &collection_name)
 {
-    std::lock_guard<std::mutex> lock(dbMutex);
-    std::vector<std::pair<bson_t*,bson_t*>>filterAndUpdateDocuments{};
+    std::vector<std::pair<bson_t *, bson_t *>> filterAndUpdateDocuments{};
     bson_error_t error;
-    bson_t *update = NULL;
-    bson_t query;
-    bson_iter_t iter;
-    for (auto document:documents){
-    if (bson_iter_init(&iter, document) && bson_iter_find(&iter, "_id"))
+
+    for (auto document : documents)
     {
-        const bson_oid_t *oid = bson_iter_oid(&iter);
-        bson_init(&query);
-        BSON_APPEND_OID(&query, "_id", oid);
-        update = bson_new();
-        bson_t child;
-        BSON_APPEND_DOCUMENT_BEGIN(update, "$set", &child);
-        BSON_APPEND_BOOL(&child, "processed", true);
-        bson_append_document_end(update, &child);
-        filterAndUpdateDocuments.emplace_back(&query,update);
+        bson_t *query = bson_new(); // Create a new bson_t for each query
+        bson_t *update = bson_new();
+        bson_iter_t iter;
+        if (bson_iter_init(&iter, document) && bson_iter_find(&iter, "_id"))
+        {
+            const bson_oid_t *oid = bson_iter_oid(&iter);
+            BSON_APPEND_OID(query, "_id", oid);
+            if (update)
+            {
+                bson_t child;
+                BSON_APPEND_DOCUMENT_BEGIN(update, "$set", &child);
+                BSON_APPEND_BOOL(&child, "processed", true);
+                bson_append_document_end(update, &child);
+                filterAndUpdateDocuments.emplace_back(query, update);
+            }
+            else
+            {
+                std::cerr << "Failed to create BSON update object." << std::endl;
+                bson_destroy(query);
+            }
+        }
+        else
+        {
+            std::cerr << "Document doesn't contain an _id field" << std::endl;
+            bson_destroy(query);
+        }
     }
-    else
-    {
-        std::cerr << "Document doesn't contain an _id field" << std::endl;
-        continue;
-    }
-    }
+
     mongoc_collection_t *collection = mongoc_client_get_collection(m_client, database_name.c_str(), collection_name.c_str());
-    insertOrUpdateManyDocuments(filterAndUpdateDocuments,database_name,collection_name);
+    insertOrUpdateManyDocuments(filterAndUpdateDocuments, database_name, collection_name);
 }
 
 std::string DataBase::extractContentFromIndexDocument(const bson_t *document)

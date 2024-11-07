@@ -2,8 +2,8 @@
 #include "DataBase.h"
 #include "WordProcessor.h"
 
-InvertedIndex::InvertedIndex(DataBase *&db, const std::string &database_name, const std::string &collection_name, const std::string &documents_collection_name, const std::string &metadata_collection_name)
-    : m_db{db}, m_database_name{database_name}, m_collection_name{collection_name}, m_documents_collection_name{documents_collection_name}, m_metadata_collection_name{metadata_collection_name}
+InvertedIndex::InvertedIndex(DataBase *&db, const std::string &database_name, const std::string &collection_name, const std::string &documents_collection_name, const std::string &metadata_collection_name, int number_of_threads)
+    : m_db{db}, m_database_name{database_name}, m_collection_name{collection_name}, m_documents_collection_name{documents_collection_name}, m_metadata_collection_name{metadata_collection_name}, m_number_of_threads{number_of_threads}
 {
 }
 
@@ -15,34 +15,33 @@ void InvertedIndex::run(bool clear)
     try
     {
         // m_index = m_db -> getDocument(m_database_name,m_collection_name);
-        if(clear){
-            m_db->clearCollection(m_database_name,m_collection_name);
-        }else{
+        if (clear)
+        {
+            m_db->clearCollection(m_database_name, m_collection_name);
+        }
+        else
+        {
             // retrieveExistingIndex();
             retrieveExistingMetadataDocument();
         }
         int numberOfDocuments = m_db->getCollectionDocumentCount(m_database_name, m_documents_collection_name, BCON_NEW("processed", BCON_BOOL(false)));
 
-        int numberOfDocumentsToIndex = std::min(1000, (2 * numberOfDocuments / m_number_of_threads));
+        int numberOfDocumentsToIndex = std::min(1000, (numberOfDocuments / (m_number_of_threads)));
         {
             ThreadPool thread_pool{m_number_of_threads};
-            std::vector<bson_t*>documents;
+            std::vector<bson_t *> documents;
             while (numberOfDocuments > 0)
-            {   std::cout<<1<<"\n";
-                documents=m_db->getLimitedDocuments(m_database_name,m_documents_collection_name,numberOfDocumentsToIndex,BCON_NEW("processed",BCON_BOOL(false)));
+            {
+                documents = m_db->getLimitedDocuments(m_database_name, m_documents_collection_name, numberOfDocumentsToIndex, BCON_NEW("processed", BCON_BOOL(false)));
                 if (documents.empty())
                 {
                     std::cout << "No \"un-processed\" documents found to index\n";
                     return;
                 }
-                std::cout<<2<<"\n";
-                m_db->markDocumentsProcessed(documents,m_database_name,m_documents_collection_name);
-                std::cout<<3<<'\n';
+                m_db->markDocumentsProcessed(documents, m_database_name, m_documents_collection_name);
                 thread_pool.enqueue([this, documents]
-                                    { this->index(documents); });
-                for(auto document:documents){
-                    bson_destroy(document);
-                }
+                                    { this->index(std::move(documents)); });
+
                 numberOfDocuments -= numberOfDocumentsToIndex;
             }
         }
@@ -56,7 +55,7 @@ void InvertedIndex::run(bool clear)
 
 void InvertedIndex::index(std::vector<bson_t *> documents)
 {
-   std::cout<<std::this_thread::get_id()<<'\n';
+    std::cout << std::this_thread::get_id() << "<<<<<<>>>>>>" << '\n';
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> index = {};
     document_metadata metadata_document = {};
@@ -67,11 +66,20 @@ void InvertedIndex::index(std::vector<bson_t *> documents)
         {
             for (auto document : documents)
             {
-                processDocument(document, index, metadata_document);
+                if (document != nullptr)
+                    processDocument(document, index, metadata_document);
             }
         }
         updateMetadataDocument(metadata_document);
+
+        std::cout << std::this_thread::get_id() << "<<<<<<" << '\n';
         db.saveInvertedIndex(index, m_database_name, m_collection_name);
+        std::cout << std::this_thread::get_id() << ">>>>>>" << '\n';
+
+        for (auto document : documents)
+        {
+            bson_destroy(document);
+        }
     }
     catch (std::exception &ex)
     {
@@ -94,7 +102,11 @@ InvertedIndex::document_metadata InvertedIndex::getMetadataDocument()
 
 void InvertedIndex::addDocument(const std::string docId, std::string &content, std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> &index, document_metadata &document_metadata)
 {
-    std::cout<<std::this_thread::get_id()<<'\n';
+    if (docId.empty())
+    {
+        return;
+    }
+    // std::cout << std::this_thread::get_id() << '\n';
     std::vector<std::string> tokens = WordProcessor::tokenize(content);
     std::string token{};
     document_metadata.doc_lengths[docId] = tokens.size();
@@ -180,7 +192,7 @@ std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>
 
     for (bson_t *document : documents)
     {
-        InvertedIndex::extractInvertedIndexDocument(document,index);
+        InvertedIndex::extractInvertedIndexDocument(document, index);
     }
     for (auto document : documents)
     {
@@ -190,8 +202,7 @@ std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>
     return index;
 }
 
-
-void InvertedIndex::extractInvertedIndexDocument(bson_t *&document,std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>>&index)
+void InvertedIndex::extractInvertedIndexDocument(bson_t *&document, std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> &index)
 {
     bson_iter_t iter;
     std::string term;

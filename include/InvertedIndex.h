@@ -21,7 +21,7 @@ public:
             double average_doc_length;
             document_metadata() : total_documents(0), average_doc_length(0.0) {}
         };
-    InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name );
+    InvertedIndex(DataBase *&db,const std::string& database_name, const std::string& collection_name,const std::string& documents_collection_name,const std::string& metadata_collection_name, int numberOfThreads = 1 );
     void run(bool clear = false);
     void index(std::vector<bson_t *> documents);
     void processDocument(bson_t* document,std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>>& index,document_metadata& document_metadata);

@@ -29,7 +29,7 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 {
 	m_frontier_limit = maximumNumberOfPagesToCrawl;
 	maximumNumberOfPages = maximumNumberOfPagesToCrawl;
-	m_number_of_pages_to_save = std::min(1000,(2*maximumNumberOfPages/m_number_of_threads));
+	m_number_of_pages_to_save = std::min(1000, (maximumNumberOfPages / m_number_of_threads));
 	m_crawled_pages_number = 0;
 	clearRecord = false;
 	auto start = std::chrono::high_resolution_clock::now();
