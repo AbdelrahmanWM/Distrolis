@@ -204,6 +204,7 @@ std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>
 
 void InvertedIndex::extractInvertedIndexDocument(bson_t *&document, std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> &index)
 {
+
     bson_iter_t iter;
     std::string term;
     if (!bson_iter_init(&iter, document))
@@ -223,7 +224,7 @@ void InvertedIndex::extractInvertedIndexDocument(bson_t *&document, std::unorder
     }
     if (bson_iter_find(&iter, "documents") && BSON_ITER_HOLDS_ARRAY(&iter))
     {
-        std::unordered_map<std::string, std::vector<int>> doc_map;
+        std::unordered_map<std::string, std::vector<int>> doc_map{index[term]};
         bson_iter_t array_iter;
         bson_iter_recurse(&iter, &array_iter);
         while (bson_iter_next(&array_iter))
@@ -264,6 +265,7 @@ void InvertedIndex::extractInvertedIndexDocument(bson_t *&document, std::unorder
     {
         std::cerr << "Failed to find documents.\n";
     }
+    std::cout << "length: " << index.size() << "\n";
 }
 
 void InvertedIndex::saveMetadataDocument()
