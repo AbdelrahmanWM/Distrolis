@@ -35,7 +35,7 @@ public:
     void destroyConnection();
 private:
     std::string m_connection_string;
-    void processWordDocuments(std::vector<std::pair<bson_t *,bson_t*>> &filterAndUpdateDocuments, const std::string &term, const std::unordered_map<std::string, std::vector<int>> &map);
+    void processWordDocuments(std::vector<bson_t*> &documents, const std::string &term, const std::unordered_map<std::string, std::vector<int>> &map);
     mongoc_client_t *m_client;
     std::mutex dbMutex;
 };

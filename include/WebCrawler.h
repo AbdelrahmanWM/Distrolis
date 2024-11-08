@@ -20,7 +20,7 @@ public:
 	WebCrawler(DataBase *&database, const HTMLParser &parser, const std::string &database_name, const std::string &collection_name, const std::string &visitedUrls_collection_name, const bool useProxy, const std::string &proxyAPIUrl = "", int numberOfThreads = 1);
 	~WebCrawler();
 	void run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &seedUrl);
-    void terminate(bool clearHistory=true);
+	void terminate(bool clearHistory = true);
 
 	void crawl(int maximumNumberOfPagesToCrawl);
 	void clearCrawledDocuments();
@@ -58,6 +58,8 @@ private:
 	std::mutex m_frontier_mutex;
 	std::mutex m_crawled_pages_mutex;
 	std::mutex m_stop_mutex;
+	std::atomic<bool> m_stopRequested{};
+	std::atomic<bool> m_clearRecord {};
 	std::condition_variable m_stop_condition;
 	int m_number_of_threads;
 	int m_number_of_pages_to_save;

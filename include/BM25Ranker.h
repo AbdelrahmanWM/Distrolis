@@ -15,6 +15,8 @@ public:
     std::vector<std::pair<std::string,double>> run(const std::string& query_string);
     void setDatabaseName(const std::string&databaseName);
     void setDocumentsCollectionName(const std::string&collectionName);
+    void extractInvertedIndexAndMetadata();
+
 private:
     ScoresDocument ProcessQuery(const std::string& query);
     ScoresDocument calculatePhraseScore(const std::string& phrase);
@@ -26,7 +28,6 @@ private:
     ScoresDocument documentsOROperation(const ScoresDocument& operand1,const ScoresDocument& operand2);
     void documentsStackCombineOperation(std::stack<ScoresDocument> &documentsStack);    
     ScoresDocument documentNormalizeOperation(const ScoresDocument& operand);
-    void extractInvertedIndexAndMetadata();
     ScoresDocument getEmptyScoresDocument();
     ScoresDocument calculateBM25ScoreForTerm(const std::string& term);
     ScoresDocument calculateBM25ScoreForPhrase(const std::unordered_map<std::string,int>& documentsMap);

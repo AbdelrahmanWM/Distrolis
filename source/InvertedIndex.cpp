@@ -1,6 +1,7 @@
 #include "InvertedIndex.h"
 #include "DataBase.h"
 #include "WordProcessor.h"
+#include <atomic>
 
 InvertedIndex::InvertedIndex(DataBase *&db, const std::string &database_name, const std::string &collection_name, const std::string &documents_collection_name, const std::string &metadata_collection_name, int number_of_threads)
     : m_db{db}, m_database_name{database_name}, m_collection_name{collection_name}, m_documents_collection_name{documents_collection_name}, m_metadata_collection_name{metadata_collection_name}, m_number_of_threads{number_of_threads}
@@ -9,12 +10,13 @@ InvertedIndex::InvertedIndex(DataBase *&db, const std::string &database_name, co
 
 void InvertedIndex::run(bool clear)
 {
+    m_stopRequest = false;
+    m_clearHistory = false;
     std::vector<bson_t *> documents{};
 
     m_document_metadata = {};
     try
     {
-        // m_index = m_db -> getDocument(m_database_name,m_collection_name);
         if (clear)
         {
             m_db->clearCollection(m_database_name, m_collection_name);
@@ -32,6 +34,11 @@ void InvertedIndex::run(bool clear)
             std::vector<bson_t *> documents;
             while (numberOfDocuments > 0)
             {
+                if (m_stopRequest)
+                {
+                    std::cout << "break\n";
+                    break;
+                }
                 documents = m_db->getLimitedDocuments(m_database_name, m_documents_collection_name, numberOfDocumentsToIndex, BCON_NEW("processed", BCON_BOOL(false)));
                 if (documents.empty())
                 {
@@ -51,14 +58,28 @@ void InvertedIndex::run(bool clear)
     {
         std::cerr << "Error: " << ex.what() << '\n';
     }
+    if (m_clearHistory)
+    {
+        m_db->clearCollection(m_database_name, m_collection_name);
+        m_db->clearCollection(m_database_name, m_metadata_collection_name);
+    }
+}
+
+void InvertedIndex::terminate(bool clear)
+{
+    m_stopRequest = true;
+    m_clearHistory = clear;
 }
 
 void InvertedIndex::index(std::vector<bson_t *> documents)
 {
-    std::cout << std::this_thread::get_id() << "<<<<<<>>>>>>" << '\n';
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> index = {};
     document_metadata metadata_document = {};
+    if (m_stopRequest)
+    {
+        return;
+    }
     DataBase db{m_db->getConnectionString()};
     try
     {
@@ -66,12 +87,17 @@ void InvertedIndex::index(std::vector<bson_t *> documents)
         {
             for (auto document : documents)
             {
+                if (m_stopRequest)
+                {
+                    std::cout << "HERE\n";
+                    return;
+                }
                 if (document != nullptr)
                     processDocument(document, index, metadata_document);
             }
         }
-        updateMetadataDocument(metadata_document);
 
+        updateMetadataDocument(metadata_document);
         std::cout << std::this_thread::get_id() << "<<<<<<" << '\n';
         db.saveInvertedIndex(index, m_database_name, m_collection_name);
         std::cout << std::this_thread::get_id() << ">>>>>>" << '\n';
@@ -187,9 +213,8 @@ void InvertedIndex::retrieveExistingMetadataDocument()
 
 std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> InvertedIndex::retrieveExistingIndex()
 {
-    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> index;
-    std::vector<bson_t *> documents = std::move(m_db->getAllDocuments(m_database_name, m_collection_name));
-
+    std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> index{};
+    std::vector<bson_t *> documents = m_db->getAllDocuments(m_database_name, m_collection_name);
     for (bson_t *document : documents)
     {
         InvertedIndex::extractInvertedIndexDocument(document, index);
@@ -265,7 +290,6 @@ void InvertedIndex::extractInvertedIndexDocument(bson_t *&document, std::unorder
     {
         std::cerr << "Failed to find documents.\n";
     }
-    std::cout << "length: " << index.size() << "\n";
 }
 
 void InvertedIndex::saveMetadataDocument()

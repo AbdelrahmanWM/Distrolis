@@ -1,8 +1,6 @@
 #include "WebCrawler.h"
 #include "ThreadPool.h"
 
-std::atomic<bool> stopRequested = false;
-std::atomic<bool> clearRecord = false;
 int maximumNumberOfPages;
 // Just temporarily
 std::vector<std::string> WebCrawler::m_proxies_list;
@@ -31,7 +29,7 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 	maximumNumberOfPages = maximumNumberOfPagesToCrawl;
 	m_number_of_pages_to_save = std::min(1000, (maximumNumberOfPages / m_number_of_threads));
 	m_crawled_pages_number = 0;
-	clearRecord = false;
+	m_clearRecord = false;
 	auto start = std::chrono::high_resolution_clock::now();
 	addSeedUrls(seedUrls);
 	retrieveVisitedUrls(); // when the clear documents is called??
@@ -52,8 +50,8 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 	std::deque<std::string> empty;
 	std::swap(m_frontier, empty);
 	m_visited_urls.clear();
-	stopRequested = false;
-	if (clearRecord)
+	m_stopRequested = false;
+	if (m_clearRecord)
 	{ // in case a termination happens
 		clearCrawledDocuments();
 	}
@@ -63,8 +61,8 @@ void WebCrawler::run(int maximumNumberOfPagesToCrawl, std::queue<std::string> &s
 }
 void WebCrawler::terminate(bool clearHistory)
 {
-	stopRequested = true;
-	clearRecord = clearHistory;
+	m_stopRequested = true;
+	m_clearRecord = clearHistory;
 }
 void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 {
@@ -75,7 +73,7 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 	std::vector<bson_t *> crawled_pages{};
 	crawled_pages.reserve(m_number_of_pages_to_save + 5);
 
-	while (!stopRequested)
+	while (!m_stopRequested)
 	{
 		// std::cout << std::this_thread::get_id() << '\n';
 		std::string url;
@@ -88,7 +86,7 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 				// 						  { return !m_frontier.empty(); });
 				// if (m_frontier.empty())
 				// {
-				stopRequested = true;
+				m_stopRequested = true;
 				break;
 			}
 			url = m_frontier.front();
@@ -118,7 +116,7 @@ void WebCrawler::crawl(int maximumNumberOfPagesToCrawl)
 			crawled_pages.clear();
 			crawled_pages.reserve(m_number_of_pages_to_save + 5);
 		}
-		if (stopRequested)
+		if (m_stopRequested)
 		{
 			break; // temporarily
 		}
@@ -150,7 +148,7 @@ void WebCrawler::addSeedUrls(std::queue<std::string> &seedUrls)
 }
 void WebCrawler::parsePage(const std::string &htmlContent, const std::string &url, std::vector<bson_t *> &crawled_pages)
 {
-	if (stopRequested)
+	if (m_stopRequested)
 		return; // temporarily
 	if (htmlContent == "")
 	{
@@ -188,7 +186,7 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 	}
 
 	links.clear();
-	if (!stopRequested)
+	if (!m_stopRequested)
 		markURLAsVisited(url);
 	crawled_pages.push_back(m_parser.getPageDocument(htmlContent, url));
 	// std::cout << "crawled pages: " << crawled_pages.size() << '\n';
@@ -197,13 +195,13 @@ void WebCrawler::parsePage(const std::string &htmlContent, const std::string &ur
 		m_crawled_pages_number += 1;
 		if (m_crawled_pages_number >= maximumNumberOfPages)
 		{
-			stopRequested = true;
+			m_stopRequested = true;
 		}
 	}
 }
 std::string WebCrawler::fetchPage(CURL *curl, const std::string &url, bool useProxy)
 {
-	if (stopRequested || isURLVisited(url)) // temporarily
+	if (m_stopRequested || isURLVisited(url)) // temporarily
 	{
 		return "";
 	}

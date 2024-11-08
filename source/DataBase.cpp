@@ -29,17 +29,22 @@ DataBase::DataBase(const std::string &connectionString)
     bson_destroy(command);
 }
 
-void DataBase::processWordDocuments(std::vector<std::pair<bson_t *, bson_t *>> &documents, const std::string &term, const std::unordered_map<std::string, std::vector<int>> &map)
+void DataBase::processWordDocuments(std::vector<bson_t *> &documents, const std::string &term, const std::unordered_map<std::string, std::vector<int>> &map)
 {
     try
     {
-        // std::cout << std::this_thread::get_id() << "\n";
         if (term.empty())
+        {
             return;
-        bson_t *filter = BCON_NEW("term", BCON_UTF8(term.c_str()));
-
-        bson_t *postings_array = bson_new();
-        // BSON_APPEND_ARRAY_BEGIN(term_doc, term.c_str(), &postings_array);
+        }
+        bson_t *term_doc = bson_new();
+        if (!term_doc)
+        {
+            std::cerr << "Failed to create BSON document." << std::endl;
+        }
+        bson_t postings_array;
+        bson_append_utf8(term_doc, "term", -1, term.c_str(), -1);
+        BSON_APPEND_ARRAY_BEGIN(term_doc, "documents", &postings_array);
         // BSON_APPEND_ARRAY_BEGIN(document, term.c_str(), &term_doc);
         int i = 0;
         for (const auto &[docId, positions] : map)
@@ -48,14 +53,14 @@ void DataBase::processWordDocuments(std::vector<std::pair<bson_t *, bson_t *>> &
                 continue;
             bson_t posting_doc{};
             std::string key = std::to_string(i++);
-            BSON_APPEND_DOCUMENT_BEGIN(postings_array, key.c_str(), &posting_doc);
+            BSON_APPEND_DOCUMENT_BEGIN(&postings_array, key.c_str(), &posting_doc);
 
             BSON_APPEND_UTF8(&posting_doc, "docId", docId.c_str());
 
             bson_t positions_array{};
+            int pos_index{};
             BSON_APPEND_ARRAY_BEGIN(&posting_doc, "positions", &positions_array);
 
-            int pos_index{};
             for (int pos : positions)
             {
                 std::string key = std::to_string(pos_index); // Use pos_index without incrementing
@@ -64,19 +69,13 @@ void DataBase::processWordDocuments(std::vector<std::pair<bson_t *, bson_t *>> &
             }
             bson_append_array_end(&posting_doc, &positions_array);
 
-            bson_append_document_end(postings_array, &posting_doc);
+            bson_append_document_end(&postings_array, &posting_doc);
         }
-        bson_t *update = bson_new();
-        bson_t documents_push, each_array;
-        BSON_APPEND_DOCUMENT_BEGIN(update, "$push", &documents_push);
-        BSON_APPEND_DOCUMENT_BEGIN(&documents_push, "documents", &each_array);
-        BSON_APPEND_ARRAY(&each_array, "$each", postings_array);
-        bson_append_document_end(&documents_push, &each_array);
-        bson_append_document_end(update, &documents_push);
-
-        if (update != nullptr)
+        // bson_append_array_end(document, &term_doc);
+        bson_append_array_end(term_doc, &postings_array);
+        if (term_doc != nullptr)
         {
-            documents.emplace_back(filter, update);
+            documents.push_back(term_doc);
         }
         else
         {
@@ -462,17 +461,17 @@ void DataBase::saveInvertedIndex(const std::unordered_map<std::string, std::unor
 {
 
     // bson_t *document = bson_new();
-    std::vector<std::pair<bson_t *, bson_t *>> filterAndUpdateDocuments{};
+    std::vector<bson_t *> documents{};
     try
     {
 
         for (const auto &[term, map] : index)
         {
-            processWordDocuments(filterAndUpdateDocuments, term, map);
+            processWordDocuments(documents, term, map);
         }
 
         // insertDocument(document, database_name,collection_name);
-        insertOrUpdateManyDocuments(filterAndUpdateDocuments, database_name, collection_name);
+        insertManyDocuments(documents, database_name, collection_name);
     }
     catch (const std::exception &ex)
     {

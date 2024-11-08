@@ -19,7 +19,7 @@ void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRAS
     BM25Ranker::TERM_FREQUENCY_WEIGHT = 1 - EXACT_MATCH_WEIGHT;
 }
 
-BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex* invertedIndex)
+BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex *invertedIndex)
     : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{}
 {
     extractInvertedIndexAndMetadata();
@@ -45,6 +45,7 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
 {
     try
     {
+        std::cout << "length: " << m_term_frequencies.size() << "\n";
         std::stack<LogicalOperation> operations_stack{};
         std::stack<ScoresDocument> phrase_documents_scores_stack;
         std::stack<ScoresDocument> term_documents_scores_stack;
@@ -283,9 +284,8 @@ void BM25Ranker::extractInvertedIndexAndMetadata()
     m_invertedIndex->retrieveExistingMetadataDocument();
     m_term_frequencies = m_invertedIndex->retrieveExistingIndex();
     m_metadata_document = m_invertedIndex->getMetadataDocument();
-    std::cout<<"term frequencies: "<<m_term_frequencies.size()<<'\n';
-    std::cout<<"metadata document: "<<m_metadata_document.total_documents<<'\n';
-    
+    std::cout << "term frequencies: " << m_term_frequencies.size() << '\n';
+    std::cout << "metadata document: " << m_metadata_document.total_documents << '\n';
 }
 
 BM25Ranker::ScoresDocument BM25Ranker::getEmptyScoresDocument()
@@ -312,7 +312,6 @@ std::vector<std::string> BM25Ranker::tokenizeQuery(const std::string &query)
             // if (WordProcessor::isStopWord(term))  // stop words will complicate phrase search
             //     continue;
             term = WordProcessor::stem(term);
-
 
             // if (WordProcessor::isValidWord(term))
             // {
@@ -461,8 +460,10 @@ std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(
         //     std::cout<<element.first<<","<<element.second<<'\n';
         // }
         // std::cout<<"end\n";
-    }catch(std::exception&ex){
-        std::cerr<<ex.what();
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << ex.what();
     }
     return documents;
 }
