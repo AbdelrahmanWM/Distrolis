@@ -25,7 +25,7 @@ void SearchEngineServer::start()
     CROW_ROUTE(app, "/crawlAndIndexDocument").methods(crow::HTTPMethod::Post)(std::bind(&SearchEngineServer::crawlAndIndexDocument, this, _1));
     CROW_ROUTE(app, "/setRankerParameters").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::setRankerParameters, this, _1));
     CROW_ROUTE(app, "/clearCrawlHistory").methods(crow::HTTPMethod::Delete)(std::bind(&SearchEngineServer::clearCrawlHistory, this, _1));
-
+    CROW_ROUTE(app, "/indexDocuments_terminate").methods(crow::HTTPMethod::Put)(std::bind(&SearchEngineServer::index_terminate, this, _1));
     app.port(8080).multithreaded().run();
 }
 
@@ -134,6 +134,27 @@ crow::response SearchEngineServer::indexDocument(const crow::request &req)
         m_searchEngine.indexDocuments((bool)std::stoi(clear));
         std::string response = "Successfully created Inverted Index";
         return crow::response(200, response);
+    }
+    catch (std::exception &ex)
+    {
+        std::string error = "Error " + static_cast<std::string>(ex.what());
+        return crow::response(500, error);
+    }
+}
+
+crow::response SearchEngineServer::index_terminate(const crow::request &req)
+{
+    try
+    {
+        auto body = crow::json::load(req.body);
+        if (!body || !body["clearIndexHistory"])
+        {
+            return crow::response(400, "Invalid JSON data");
+        }
+        crow::json::wvalue clearHistoryJSON = body["clearIndexHistory"];
+        std::string clearIndexHistory = clearHistoryJSON.dump();
+        m_searchEngine.terminateIndex((bool)std::stoi(clearIndexHistory));
+        return crow::response(200, "Successfully terminated indexing process");
     }
     catch (std::exception &ex)
     {

@@ -16,6 +16,7 @@ private:
     crow::response crawl(const crow::request& req);
     crow::response crawl_terminate(const crow::request&req);
     crow::response indexDocument(const crow::request& req);
+    crow::response index_terminate(const crow::request&req);
     crow::response crawlAndIndexDocument(const crow::request& req);
     crow::response clearCrawlHistory(const crow::request& req);
     crow::response setRankerParameters(const crow::request& req);

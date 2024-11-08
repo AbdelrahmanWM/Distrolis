@@ -20,6 +20,7 @@ void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumber
 void crawl(int maximumNumberOfPages,std::queue<std::string>& seedUrls);
 void terminateCrawl(bool clearDocumentsHistory=true);
 void indexDocuments(bool clearExistingInvertedIndexAndMetadata=false);
+void terminateIndex(bool clearIndexHistory=true);
 void setDatabaseAndCollectionsNames(const std::string& databaseName, const std::string& documentsCollectionName, const std::string& visitedUrlsCollectionName, const std::string& invertedIndexCollectionName, const std::string& metadataCollectionName);
 void setDatabaseName(const std::string& newDataBaseName);
 void setDocumentsCollectionName(const std::string& collectionName);
