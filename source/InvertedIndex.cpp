@@ -115,8 +115,9 @@ void InvertedIndex::index(std::vector<bson_t *> documents)
 
 void InvertedIndex::processDocument(bson_t *document, std::unordered_map<std::string, std::unordered_map<std::string, std::vector<int>>> &index, document_metadata &metadata_document)
 {
-    std::string content = m_db->extractContentFromIndexDocument(document);
-    std::string docId = m_db->extractIndexFromIndexDocument(document);
+    Document documentObject = m_db->extractDocument(document);
+    std::string content = getDocumentContent(documentObject);
+    std::string docId = documentObject._id;
     addDocument(docId, content, index, metadata_document);
     // m_db->markDocumentProcessed(document, m_database_name, m_documents_collection_name);
 }
@@ -335,6 +336,11 @@ void InvertedIndex::updateMetadataDocument(document_metadata &metadata_document)
         m_document_metadata.total_documents += metadata_document.total_documents;
         m_document_metadata.doc_lengths.insert(metadata_document.doc_lengths.begin(), metadata_document.doc_lengths.end());
     }
+}
+
+std::string InvertedIndex::getDocumentContent(Document document)
+{
+    return document.title + document.description + document.content;
 }
 
 void InvertedIndex::setDatabaseName(const std::string &databaseName)

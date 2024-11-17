@@ -9,6 +9,7 @@
 #include <thread>
 #include <mongoc/mongoc.h>
 #include <bson/bson.h>
+#include "DocumentTypes.h"
 
 class DataBase
 {
@@ -31,6 +32,7 @@ public:
     void markDocumentsProcessed(std::vector<bson_t *>&documents, const std::string &database_name, const std::string &collection_name);
     std::string extractContentFromIndexDocument(const bson_t *document);
     std::string extractIndexFromIndexDocument(const bson_t *document);
+    Document extractDocument(const bson_t*document);
     std::string getConnectionString();
     void destroyConnection();
 private:

@@ -41,7 +41,7 @@ private:
     bson_t *getEmptyMetaDataDocument();
     void saveMetadataDocument();
     void updateMetadataDocument(document_metadata &document);
-
+    std::string getDocumentContent(Document document);
     static double getAverageDocumentSize(const document_metadata &document);
     // std::unordered_map<std::string, std::unordered_map<std::string,std::vector<int>>> m_index;
     document_metadata m_document_metadata;

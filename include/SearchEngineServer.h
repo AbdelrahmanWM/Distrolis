@@ -21,7 +21,7 @@ private:
     crow::response clearCrawlHistory(const crow::request& req);
     crow::response setRankerParameters(const crow::request& req);
     crow::response rootAPIDocumentation(const crow::request& req);
-    crow::json::wvalue SearchResultsDocumentToJSON(SearchEngine::SearchResultsDocument& resultsDocument );
+    crow::json::wvalue SearchResultsDocumentToJSON(std::vector<SearchResultDocument>& resultsDocument );
     std::queue<std::string> SeedUrlsJSONToQueue(crow::json::wvalue& list);
     std::string getAPIDocumentationHTMLPage();
     

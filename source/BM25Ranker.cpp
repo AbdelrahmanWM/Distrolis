@@ -19,25 +19,25 @@ void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRAS
     BM25Ranker::TERM_FREQUENCY_WEIGHT = 1 - EXACT_MATCH_WEIGHT;
 }
 
-BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex *invertedIndex)
-    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{}
+BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex *invertedIndex, DocumentRetriever *dr)
+    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{},m_dr{dr}
 {
     extractInvertedIndexAndMetadata();
 }
 
-std::vector<std::pair<std::string, double>> BM25Ranker::run(const std::string &query_string)
+std::vector<SearchResultDocument> BM25Ranker::run(const std::string &query_string)
 {
     try
     {
         BM25Ranker::ScoresDocument scores_document = ProcessQuery(query_string);
         std::vector<std::pair<std::string, double>> documents = sortDocumentScores(scores_document);
-
-        return documents;
+        
+        return m_dr->getScoresDocuments(m_database_name,m_documents_collection_name,documents);
     }
     catch (std::exception &ex)
     {
         std::cerr << ex.what() << '\n';
-        return std::vector<std::pair<std::string, double>>();
+        return m_dr->getScoresDocuments(m_database_name,m_documents_collection_name,std::vector<std::pair<std::string, double>>());
     }
 }
 

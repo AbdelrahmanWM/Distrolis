@@ -407,21 +407,26 @@ int DataBase::getCollectionDocumentCount(const std::string &database_name, const
 std::vector<bson_t *> DataBase::getDocumentsByIds(const std::string &database_name, const std::string &collection_name, const std::vector<std::string> &ids)
 {
     bson_t *filter = DataBase::createIdFilter(ids);
-    return DataBase::getAllDocuments(database_name, collection_name, filter);
+    return DataBase::getLimitedDocuments(database_name, collection_name, 100, filter);
 }
 
 bson_t *DataBase::createIdFilter(const std::vector<std::string> &ids)
 {
     bson_t *filter = bson_new();
-    bson_t *or_array = bson_new();
-    for (const auto &id : ids)
+    bson_t or_array;
+    bson_t child;
+    bson_append_array_begin(filter, "$or", -1, &or_array);
+    for (size_t i = 0; i < ids.size(); ++i)
     {
-        bson_t *id_doc = BCON_NEW("_id", BCON_UTF8(id.c_str()));
-        bson_append_document(or_array, "", -1, id_doc);
-        bson_destroy(id_doc);
+        std::string key = std::to_string(i);
+        BSON_APPEND_DOCUMENT_BEGIN(&or_array, key.c_str(), &child);
+        bson_oid_t id;
+        bson_oid_init_from_string(&id, ids[i].c_str());
+
+        BSON_APPEND_OID(&child, "_id", &id);
+        bson_append_document_end(&or_array, &child);
     }
-    BSON_APPEND_ARRAY(filter, "$or", or_array);
-    bson_destroy(or_array);
+    bson_append_array_end(filter, &or_array);
     return filter;
 }
 
@@ -575,6 +580,39 @@ std::string DataBase::extractIndexFromIndexDocument(const bson_t *document)
     }
 
     return docId;
+}
+
+Document DataBase::extractDocument(const bson_t *document)
+{
+    std::vector<std::string> fields{"_id", "title", "description", "content", "url"};
+    Document resultDocument{};
+    bson_iter_t iter;
+
+    for (const auto &field : fields)
+    {
+        if (bson_iter_init_find(&iter, document, field.c_str()))
+        {
+            if (BSON_ITER_HOLDS_UTF8(&iter))
+            {
+                documentFieldSetters[field](resultDocument, static_cast<std::string>(bson_iter_utf8(&iter, nullptr)));
+            }
+            else if (BSON_ITER_HOLDS_OID(&iter))
+            {
+                const bson_oid_t *oid;
+                oid = bson_iter_oid(&iter);
+                char oid_str[25];
+                bson_oid_to_string(oid, oid_str);
+                documentFieldSetters[field](resultDocument, static_cast<std::string>(oid_str));
+            }
+        }
+
+        else
+        {
+            std::cerr << "Field: " << field << " not found in document." << std::endl;
+        }
+    }
+
+    return resultDocument;
 }
 
 std::string DataBase::getConnectionString()

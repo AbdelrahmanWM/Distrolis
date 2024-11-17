@@ -5,7 +5,7 @@ SearchEngine::SearchEngine(WebCrawler *webCrawler, InvertedIndex *invertedIndex,
 {
 }
 
-SearchEngine::SearchResultsDocument SearchEngine::search(const std::string search_query)
+std::vector<SearchResultDocument> SearchEngine::search(const std::string search_query)
 {
     return m_ranker->run(search_query);
 }

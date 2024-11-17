@@ -5,6 +5,7 @@
 #include <functional>
 #include <chrono>
 #include "SeedURLS.h"
+#include "DocumentRetriever.h"
 // #include "ThreadPool.h"
 
 static const std::string DATABASE = "SearchEngine";
@@ -19,41 +20,41 @@ static const double BM25K1 = 1.5;
 static const double BM25B = 0.75;
 static const double PHRASE_BOOST = 1.35;
 static const double EXACT_MATCH_WEIGHT = 0.6;
-static std::queue<std::string>seed_url /*{SeedURLS::readSeedUrls("../seedUrls.txt")};*/
-({
-// 	// "http://localhost:3000/doc1",
-// 	// "http://localhost:3000/doc2",
-// 	// "http://localhost:3000/doc3",
-// 	// "http://localhost:3000/doc4",
-// 	// "http://localhost:3000/doc5"
-// 	"https://www.bbc.com",
-//     "https://www.cnn.com/",
-//     "https://techcrunch.com/",
-//     "https://www.wired.com/",
-//     "https://www.nytimes.com/",
-//     "https://arstechnica.com/",
-//     "https://news.ycombinator.com/",
-//     "https://www.medium.com/",
-// 	    "https://www.khanacademy.org/",
-// 		    "https://arstechnica.com",
-//     "https://www.theverge.com",
-//     "https://www.cnet.com",
-//     "https://www.bloomberg.com",
-//     "https://www.zdnet.com",
-//     "https://www.engadget.com",
-//     "https://www.polygon.com",
-//     "https://www.scientificamerican.com"
-//     // "https://www.coursera.org",
-    "https://www.edx.org",
-    "https://www.udemy.com",
-    "https://www.academia.edu",
-    "https://www.open.edu",
-    "https://www.scholarly.org",
-    "https://www.ted.com",
-//     // "https://www.wolframalpha.com",
-//     // "https://www.codecademy.com"
+static std::queue<std::string> seed_url /*{SeedURLS::readSeedUrls("../seedUrls.txt")};*/
+	({
+		// 	// "http://localhost:3000/doc1",
+		// 	// "http://localhost:3000/doc2",
+		// 	// "http://localhost:3000/doc3",
+		// 	// "http://localhost:3000/doc4",
+		// 	// "http://localhost:3000/doc5"
+		// 	"https://www.bbc.com",
+		//     "https://www.cnn.com/",
+		//     "https://techcrunch.com/",
+		//     "https://www.wired.com/",
+		//     "https://www.nytimes.com/",
+		//     "https://arstechnica.com/",
+		//     "https://news.ycombinator.com/",
+		//     "https://www.medium.com/",
+		// 	    "https://www.khanacademy.org/",
+		// 		    "https://arstechnica.com",
+		//     "https://www.theverge.com",
+		//     "https://www.cnet.com",
+		//     "https://www.bloomberg.com",
+		//     "https://www.zdnet.com",
+		//     "https://www.engadget.com",
+		//     "https://www.polygon.com",
+		//     "https://www.scientificamerican.com"
+		//     // "https://www.coursera.org",
+		"https://www.edx.org",
+		"https://www.udemy.com",
+		"https://www.academia.edu",
+		"https://www.open.edu",
+		"https://www.scholarly.org",
+		"https://www.ted.com",
+		//     // "https://www.wolframalpha.com",
+		//     // "https://www.codecademy.com"
 
-});
+	});
 int main(int argc, char *argv[])
 {
 
@@ -71,6 +72,8 @@ int main(int argc, char *argv[])
 	DataBase db{connectionString};
 	DataBase *dbPtr = &db;
 	HTMLParser htmlParser{};
+	DocumentRetriever dr = DocumentRetriever{dbPtr};
+	DocumentRetriever *drPtr{&dr};
 	WebCrawler webCrawler{dbPtr, htmlParser, DATABASE, DOCUMENTS_COLLECTION, VISITED_URLS_COLLECTION, USE_PROXY, proxyAPIUrl};
 	// ThreadPool threadPool{NUMBER_OF_THREADS};
 
@@ -84,7 +87,7 @@ int main(int argc, char *argv[])
 	// auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 	// std::cout << "Time taken: " << duration.count() << " seconds\n";
 
-	BM25Ranker bm25Ranker{DATABASE, DOCUMENTS_COLLECTION, &invertedIndex};
+	BM25Ranker bm25Ranker{DATABASE, DOCUMENTS_COLLECTION, &invertedIndex, drPtr};
 	SearchEngine engine{&webCrawler, &invertedIndex, &bm25Ranker};
 
 	// engine.setNumberOfThreads(6);

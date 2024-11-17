@@ -34,7 +34,7 @@ crow::response SearchEngineServer::search(const crow::request &req)
     try
     {
         std::string query = req.url_params.get("query");
-        SearchEngine::SearchResultsDocument results = m_searchEngine.search(query);
+        std::vector<SearchResultDocument> results = m_searchEngine.search(query);
         return crow::response(200, SearchResultsDocumentToJSON(results));
     }
     catch (std::exception &ex)
@@ -205,15 +205,17 @@ crow::response SearchEngineServer::clearCrawlHistory(const crow::request &req)
     }
 }
 
-crow::json::wvalue SearchEngineServer::SearchResultsDocumentToJSON(SearchEngine::SearchResultsDocument &resultsDocument)
+crow::json::wvalue SearchEngineServer::SearchResultsDocumentToJSON(std::vector<SearchResultDocument> &resultsDocument)
 {
     crow::json::wvalue::list result{};
 
-    for (const auto &pair : resultsDocument)
+    for (const auto document : resultsDocument)
     {
         crow::json::wvalue item;
-        item["key"] = pair.first;
-        item["value"] = pair.second;
+        item["title"] = document.title;
+        item["content"] = document.body;
+        item["url"] = document.url;
+        item["score"] = document.score;
         result.push_back(item);
     }
     return result;

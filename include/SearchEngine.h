@@ -5,6 +5,7 @@
 #include "InvertedIndex.h"
 #include "BM25Ranker.h"
 #include "WordProcessor.h"
+#include "DocumentTypes.h"
 #ifndef SEARCHENGINE_H
 #define SEARCHENGINE_H  
 
@@ -15,7 +16,7 @@ typedef  std::vector<std::pair<std::string,double>> SearchResultsDocument;
 
 SearchEngine(WebCrawler* webCrawler,InvertedIndex* invertedIndex, BM25Ranker* ranker );
 // ~SearchEngine();
-SearchResultsDocument search(const std::string search_query);
+std::vector<SearchResultDocument> search(const std::string search_query);
 void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearHistory=false);
 void crawl(int maximumNumberOfPages,std::queue<std::string>& seedUrls);
 void terminateCrawl(bool clearDocumentsHistory=true);
