@@ -142,6 +142,16 @@ std::queue<std::string> WordProcessor::extractSeedUrlsFromString(const std::stri
 
     return results_queue;
 }
+std::string WordProcessor::cleanSnippet(const std::string &snippet)
+{
+    std::string clean_content{snippet};
+    clean_content.erase(std::remove(clean_content.begin(), clean_content.end(), '\n'), clean_content.end());
+    clean_content.erase(std::remove(clean_content.begin(), clean_content.end(), '\r'), clean_content.end());
+    std::string::iterator end_pos = std::unique(clean_content.begin(), clean_content.end(), [](char left, char right)
+                                                { return (left == ' ' && right == ' '); });
+    clean_content.erase(end_pos, clean_content.end());
+    return clean_content;
+}
 const std::unordered_set<std::string> &WordProcessor::getStopWords()
 {
     static const std::unordered_set<std::string> stopWords = {

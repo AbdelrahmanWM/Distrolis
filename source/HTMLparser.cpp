@@ -46,19 +46,22 @@ std::vector<std::string> HTMLParser::extractRobotsTxtLinks(const std::string &ro
     std::vector<std::string> urls{};
     size_t startIndex = robotsTxt.find("User-agent: *");
     size_t endIndex = robotsTxt.find("User-agent:", startIndex + 1);
-    if (endIndex==std::string::npos){
-        endIndex=robotsTxt.size()-1;
+    if (endIndex == std::string::npos)
+    {
+        endIndex = robotsTxt.size() - 1;
     }
     std::string url{};
     size_t urlStartIndex{};
     size_t urlEndIndex{};
     while (startIndex < endIndex)
     {
-        size_t index= robotsTxt.find("Disallow: ", startIndex);
-        if(index!=urlStartIndex)break;
-        urlStartIndex=index;
-        
-        if (urlStartIndex == std::string::npos)break;
+        size_t index = robotsTxt.find("Disallow: ", startIndex);
+        if (index != urlStartIndex)
+            break;
+        urlStartIndex = index;
+
+        if (urlStartIndex == std::string::npos)
+            break;
         if (urlStartIndex < endIndex)
         {
             // std::cout << urlStartIndex << "," << urlEndIndex << "\n";
@@ -66,7 +69,6 @@ std::vector<std::string> HTMLParser::extractRobotsTxtLinks(const std::string &ro
             urlStartIndex += 10;
             urlEndIndex = robotsTxt.find("\n", urlStartIndex);
 
-          
             url = robotsTxt.substr(urlStartIndex, urlEndIndex - urlStartIndex);
             //   std::cout << "###"<<url << "###\n";
             if (!URLParser::isURL(url))
@@ -103,7 +105,7 @@ HTMLParser::documentStructure HTMLParser::extractElements(const ::std::string &h
             document.content_type = extractElement(doc, xpathCtx, "//meta[@name='content-type']/@content");
             document.tags = extractElement(doc, xpathCtx, "//meta[@name='tags']/@content");
             document.image_links = extractElement(doc, xpathCtx, "//img/@src");
-            document.content = extractText(doc);
+            document.content = WordProcessor::cleanSnippet(extractText(doc)); /// remove spaces and new lines
             document.url = url;
             document.processed = false;
         }

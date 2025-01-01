@@ -23,7 +23,8 @@ build_linux/
 
 # env files
 .env
-notes.txt
+
+notes
 performance.txt
 # Visual Studio Code
 

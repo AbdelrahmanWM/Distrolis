@@ -6,6 +6,7 @@
 #include<iostream>
 #include <unordered_set>
 #include "DataBase.h"
+#include "WordProcessor.h"
 
 class HTMLParser {
 public:
