@@ -7,6 +7,7 @@
 
 struct SearchResultDocument
 {
+    std::string id;
     std::string title;
     std::string body;
     std::string url;

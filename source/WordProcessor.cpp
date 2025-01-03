@@ -59,10 +59,8 @@ std::string WordProcessor::normalizeQuotedPhrase(const std::string &text)
     std::string result = text;
     while (isQuotedPhrase(result))
     {
-        std::cout << "<<" << result << ">>\n";
         result = result.substr(1, result.size() - 2);
     }
-    std::cout << result << "\n";
     return result;
 }
 
@@ -147,11 +145,21 @@ std::string WordProcessor::cleanSnippet(const std::string &snippet)
     std::string clean_content{snippet};
     clean_content.erase(std::remove(clean_content.begin(), clean_content.end(), '\n'), clean_content.end());
     clean_content.erase(std::remove(clean_content.begin(), clean_content.end(), '\r'), clean_content.end());
+    clean_content.erase(std::remove(clean_content.begin(), clean_content.end(), '\t'), clean_content.end());
     std::string::iterator end_pos = std::unique(clean_content.begin(), clean_content.end(), [](char left, char right)
                                                 { return (left == ' ' && right == ' '); });
     clean_content.erase(end_pos, clean_content.end());
     return clean_content;
 }
+std::vector<std::string> WordProcessor::splitStringBySpace(const std::string&str){
+        std::istringstream stream(str);
+        std::vector<std::string>words;
+        std::string word;
+        while (stream>>word){
+            words.push_back(word);
+        }
+        return words;
+    }
 const std::unordered_set<std::string> &WordProcessor::getStopWords()
 {
     static const std::unordered_set<std::string> stopWords = {

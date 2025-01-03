@@ -9,6 +9,10 @@ double BM25Ranker::EXACT_MATCH_WEIGHT = 0.6;
 double BM25Ranker::K1 = 1.5;           // Default value for K1
 double BM25Ranker::B = 0.75;           // Default ovalue for B
 double BM25Ranker::PHRASE_BOOST = 1.3; // Default value for PHRASE_BOOST
+std::unordered_map<std::string, int> BM25Ranker::wordsAndPhrasesWeights = {};
+int negativeWeightMultiplier = 5; // for negative weight to positive weight ratio on snippet forming
+std::unordered_map<std::string, std::unordered_map<int, std::string>> documentsWordAndPhrasePositions{};
+std::unordered_map<std::string, std::vector<int>> documentsPositions{};
 
 void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRASE_BOOST_VALUE, double EXACT_MATCH_WEIGHT)
 {
@@ -20,24 +24,40 @@ void BM25Ranker::setRankerParameters(double BM25_K1, double BM25_B, double PHRAS
 }
 
 BM25Ranker::BM25Ranker(const std::string &database_name, const std::string &documents_collection_name, InvertedIndex *invertedIndex, DocumentRetriever *dr)
-    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{},m_dr{dr}
+    : m_database_name(database_name), m_documents_collection_name(documents_collection_name), m_invertedIndex(invertedIndex), m_query_phrase_queue{}, m_dr{dr}
 {
     extractInvertedIndexAndMetadata();
 }
 
-std::vector<SearchResultDocument> BM25Ranker::run(const std::string &query_string)
+std::vector<SearchResultDocument> BM25Ranker::run(const std::string &query_string, double accuracy)
 {
     try
     {
+        documentsWordAndPhrasePositions.clear();
+        documentsPositions.clear();
+
         BM25Ranker::ScoresDocument scores_document = ProcessQuery(query_string);
+        scores_document = filterMapBasedOnValue(scores_document, accuracy);
+
         std::vector<std::pair<std::string, double>> documents = sortDocumentScores(scores_document);
-        
-        return m_dr->getScoresDocuments(m_database_name,m_documents_collection_name,documents);
+        std::vector<SearchResultDocument> searchDocuments = m_dr->getScoresDocuments(m_database_name, m_documents_collection_name, documents, scores_document);
+        for (auto &document : documentsPositions)
+        {
+            std::sort(document.second.begin(), document.second.end());
+        }
+        for (auto &document : searchDocuments)
+        {
+            std::vector<std::string> tokens = WordProcessor::tokenize(document.title + document.body);
+            std::pair<int, int> pos = getBestDocumentSnippetPositions(document.id, wordsAndPhrasesWeights);
+            document.body = constructDocumentSnippet(document.id, tokens, pos);
+        }
+        return searchDocuments;
     }
     catch (std::exception &ex)
     {
         std::cerr << ex.what() << '\n';
-        return m_dr->getScoresDocuments(m_database_name,m_documents_collection_name,std::vector<std::pair<std::string, double>>());
+        std::unordered_map<std::string, double> scoresMap = std::unordered_map<std::string, double>();
+        return m_dr->getScoresDocuments(m_database_name, m_documents_collection_name, std::vector<std::pair<std::string, double>>(), scoresMap);
     }
 }
 
@@ -45,12 +65,12 @@ BM25Ranker::ScoresDocument BM25Ranker::ProcessQuery(const std::string &query)
 {
     try
     {
-        std::cout << "length: " << m_term_frequencies.size() << "\n";
         std::stack<LogicalOperation> operations_stack{};
         std::stack<ScoresDocument> phrase_documents_scores_stack;
         std::stack<ScoresDocument> term_documents_scores_stack;
 
         std::queue<std::pair<PhraseType, std::string>> phrases_queue = WordProcessor::tokenizeQueryPhrases(query);
+        getWordsAndPhrasesWeight(phrases_queue);
         LogicalOperation op = LogicalOperation::OTHER;
         LogicalOperation currentOp = LogicalOperation::OTHER;
         ScoresDocument operand1;
@@ -187,7 +207,7 @@ BM25Ranker::ScoresDocument BM25Ranker::calculatePhraseScore(const std::string &p
     std::string normalizePhrase = WordProcessor::normalizeQuotedPhrase(std::move(phrase));
 
     std::vector<std::string> phrase_vector = tokenizeQuery(std::move(phrase));
-    std::unordered_map<std::string, int> documentsMetadata = calculateTermFrequencyMetadata(std::move(phrase_vector));
+    std::unordered_map<std::string, int> documentsMetadata = calculateTermFrequencyMetadata(std::move(phrase_vector), phrase);
     return calculateBM25ScoreForPhrase(std::move(documentsMetadata));
 }
 
@@ -339,6 +359,7 @@ BM25Ranker::ScoresDocument BM25Ranker::calculateBM25ScoreForTerm(const std::stri
     { // documentPair = {id, positions}
         const std::string &docID = documentPair.first;
         const std::vector<int> &positions = documentPair.second;
+        insertIntoDocumentsWordAndPhrasePositions(docID, term, positions);
         double termFrequency = static_cast<double>(positions.size());
         double docLength = static_cast<double>(m_metadata_document.doc_lengths[docID]);
         double bm25Score = calculateBM25(termFrequency, docLength, avgDocLength, totalDocuments, docCount);
@@ -415,7 +436,7 @@ double BM25Ranker::calculateBM25(int termFrequency, int documentLength, double a
     return idf * tf;
 }
 
-std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(const std::vector<std::string> &term_vector)
+std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(const std::vector<std::string> &term_vector, const std::string &phrase)
 {
     std::unordered_map<std::string, int> documents;
     try
@@ -437,6 +458,7 @@ std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(
                     std::vector<int> positions;
                     std::string documentId = documentPair.first;
                     std::vector<int> wordOccurrences = documentPair.second;
+                    insertIntoDocumentsWordAndPhrasePositions(documentId, term, wordOccurrences); ///////////////////
 
                     for (int position : wordOccurrences)
                     {
@@ -448,7 +470,7 @@ std::unordered_map<std::string, int> BM25Ranker::calculateTermFrequencyMetadata(
                     documentsMetadata[documentId] = positions;
                 }
         }
-        for (const auto &element : documentsMetadata)
+        for (auto &element : documentsMetadata)
         {
             if (element.second.size() > 0)
             {
@@ -478,4 +500,183 @@ std::vector<std::pair<std::string, double>> BM25Ranker::sortDocumentScores(Score
     std::sort(sortedDocuments.begin(), sortedDocuments.end(), [](std::pair<std::string, double> pair1, std::pair<std::string, double> pair2)
               { return pair1.second > pair2.second; });
     return sortedDocuments;
+}
+void BM25Ranker::insertIntoDocumentsWordAndPhrasePositions(const std::string &documentID, const std::string &phrase, const std::vector<int> &positions)
+{
+    if (documentsWordAndPhrasePositions.find(documentID) == documentsWordAndPhrasePositions.end())
+    {
+        documentsWordAndPhrasePositions[documentID] = std::unordered_map<int, std::string>();
+    }
+    if (documentsPositions.find(documentID) == documentsPositions.end())
+    {
+        documentsPositions[documentID] = std::vector<int>();
+    }
+    for (int position : positions)
+    {
+        documentsPositions[documentID].push_back(position);
+        documentsWordAndPhrasePositions[documentID][position] = phrase;
+    }
+}
+
+void BM25Ranker::getWordsAndPhrasesWeight(std::queue<std::pair<PhraseType, std::string>> &phrases_queue)
+{
+    try
+    {
+        int n = phrases_queue.size();
+        bool negativeFlag{false};
+        for (int i = 0; i < n; i++)
+        {
+            auto &pair = phrases_queue.front();
+            phrases_queue.pop();
+            phrases_queue.push(pair);
+            if (negativeFlag)
+            {
+                if (pair.first == PhraseType::LOGICAL_OPERATION)
+                {
+                    LogicalOperation op = GetLogicalOperation(pair.second);
+                    if (op == LogicalOperation::OPENING_BRACKET)
+                    {
+                        while (i < n && op != LogicalOperation::CLOSING_BRACKET)
+                        {
+                            auto &pair = phrases_queue.front();
+                            phrases_queue.pop();
+                            phrases_queue.push(pair);
+                            if (pair.first == PhraseType::LOGICAL_OPERATION)
+                            {
+                                op = GetLogicalOperation(pair.second);
+                            }
+                            else
+                            {
+                                wordsAndPhrasesWeights[pair.second] = -1 * negativeWeightMultiplier;
+                            }
+                            i++;
+                        }
+                        negativeFlag = false;
+                    }
+                }
+                else if (pair.first == PhraseType::PHRASE)
+                {
+                    wordsAndPhrasesWeights[WordProcessor::normalizeQuotedPhrase(pair.second)] = -1 * negativeWeightMultiplier;
+                    negativeFlag = false;
+                }
+                else if (pair.first == PhraseType::TERM)
+                {
+                    wordsAndPhrasesWeights[pair.second] = -1 * negativeWeightMultiplier;
+                    negativeFlag = false;
+                }
+            }
+            else
+            {
+                if (pair.first == PhraseType::LOGICAL_OPERATION && GetLogicalOperation(pair.second) == LogicalOperation::NOT)
+                {
+                    negativeFlag = true;
+                }
+                else if (pair.first == PhraseType::TERM || pair.first == PhraseType::PHRASE)
+                {
+                    wordsAndPhrasesWeights[pair.second] = 1;
+                }
+            }
+        }
+    }
+    catch (std::exception &ex)
+    {
+        std::cerr << ex.what();
+    }
+}
+
+std::pair<int, int> BM25Ranker::getBestDocumentSnippetPositions(std::string &documentID, std::unordered_map<std::string, int> &weights)
+{
+    std::vector<int> documentPositions = documentsPositions[documentID];
+    std::unordered_map<int, std::string> positionsToWords = documentsWordAndPhrasePositions[documentID];
+    std::pair<int, int> maxPos{0, 0};
+    int maxWeight = -10e10;
+    std::vector<int> prefixSums(documentPositions.size() + 1, 0);
+    for (size_t i = 0; i < documentPositions.size(); i++)
+    {
+        prefixSums[i + 1] = prefixSums[i] + weights[positionsToWords[documentPositions[i]]];
+    }
+    for (size_t i = 0; i < documentPositions.size(); i++)
+    {
+        for (size_t j = i; j < documentPositions.size() && j - i <= 40; j++)
+        {
+            int weight = prefixSums[j + 1] - prefixSums[i];
+            if (weight > maxWeight)
+            {
+                maxWeight = weight;
+                maxPos = {i, j};
+            }
+        }
+    }
+    return maxPos;
+}
+std::string BM25Ranker::constructDocumentSnippet(std::string &documentID, std::vector<std::string> &document_vector, std::pair<int, int> pos)
+{
+    std::vector<int> documentPositions = documentsPositions[documentID];
+    size_t documentPositionsSize = documentPositions.size();
+
+    size_t diff = pos.second - pos.first;
+    if (diff < 40)
+    {
+        while (diff < 40 && pos.first > 0)
+        {
+            pos.first--;
+            diff++;
+        }
+        while (diff < 40 && pos.second < document_vector.size() - 1)
+        {
+            pos.second++;
+            diff++;
+        }
+    }
+    int index = 0;
+    while (index < documentPositionsSize && documentPositions[index] < pos.first)
+    {
+        index++;
+    }
+
+    bool partOfExpression = false;
+    std::stringstream result{};
+    for (int i = pos.first; i <= pos.second; i++)
+    {
+        if (index < documentPositionsSize && i == documentPositions[index])
+        {
+            if (!partOfExpression)
+            {
+                result << "<span>";
+                partOfExpression = true;
+            }
+            result << document_vector[i];
+            index++;
+        }
+        else if (i != documentPositions[index])
+        {
+            if (partOfExpression)
+            {
+                result << "</span>";
+                partOfExpression = false;
+            }
+            result << document_vector[i];
+        }
+        else
+        {
+            result << document_vector[i];
+        }
+        if (i != pos.second)
+        {
+            result << " ";
+        }
+    }
+    if (partOfExpression)
+    {
+        result << "</span>";
+    }
+    return result.str();
+}
+
+std::unordered_map<std::string, double> BM25Ranker::filterMapBasedOnValue(std::unordered_map<std::string, double> &map, double val)
+{
+    std::unordered_map<std::string, double> result{};
+    std::copy_if(map.begin(), map.end(), std::inserter(result, result.end()), [val](const std::pair<std::string, double> &entry)
+                 { return entry.second >= val; });
+    return result;
 }

@@ -36,13 +36,11 @@ void InvertedIndex::run(bool clear)
             {
                 if (m_stopRequest)
                 {
-                    std::cout << "break\n";
                     break;
                 }
                 documents = m_db->getLimitedDocuments(m_database_name, m_documents_collection_name, numberOfDocumentsToIndex, BCON_NEW("processed", BCON_BOOL(false)));
                 if (documents.empty())
                 {
-                    std::cout << "No \"un-processed\" documents found to index\n";
                     return;
                 }
                 m_db->markDocumentsProcessed(documents, m_database_name, m_documents_collection_name);
@@ -89,7 +87,6 @@ void InvertedIndex::index(std::vector<bson_t *> documents)
             {
                 if (m_stopRequest)
                 {
-                    std::cout << "HERE\n";
                     return;
                 }
                 if (document != nullptr)
@@ -98,9 +95,7 @@ void InvertedIndex::index(std::vector<bson_t *> documents)
         }
 
         updateMetadataDocument(metadata_document);
-        std::cout << std::this_thread::get_id() << "<<<<<<" << '\n';
         db.saveInvertedIndex(index, m_database_name, m_collection_name);
-        std::cout << std::this_thread::get_id() << ">>>>>>" << '\n';
 
         for (auto document : documents)
         {
@@ -340,7 +335,7 @@ void InvertedIndex::updateMetadataDocument(document_metadata &metadata_document)
 
 std::string InvertedIndex::getDocumentContent(Document document)
 {
-    return document.title + document.description + document.content;
+    return document.title + document.content;
 }
 
 void InvertedIndex::setDatabaseName(const std::string &databaseName)

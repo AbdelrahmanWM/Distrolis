@@ -34,7 +34,8 @@ crow::response SearchEngineServer::search(const crow::request &req)
     try
     {
         std::string query = req.url_params.get("query");
-        std::vector<SearchResultDocument> results = m_searchEngine.search(query);
+        std::string accuracy = req.url_params.get("accuracy");
+        std::vector<SearchResultDocument> results = m_searchEngine.search(query, std::stod(accuracy));
         return crow::response(200, SearchResultsDocumentToJSON(results));
     }
     catch (std::exception &ex)

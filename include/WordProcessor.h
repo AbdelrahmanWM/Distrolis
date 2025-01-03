@@ -22,6 +22,7 @@ public:
     static std::queue<std::pair<PhraseType,std::string>>tokenizeQueryPhrases(const std::string& query);
     static std::queue<std::string> extractSeedUrlsFromString(const std::string &string);
     static std::string cleanSnippet(const std::string& snippet);
+    static std::vector<std::string> splitStringBySpace(const std::string&str);
 private:
     static const std::unordered_set<std::string>& getStopWords();
     static PhraseType StringToPhraseType(const std::string& string);

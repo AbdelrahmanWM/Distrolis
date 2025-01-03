@@ -16,7 +16,7 @@ typedef  std::vector<std::pair<std::string,double>> SearchResultsDocument;
 
 SearchEngine(WebCrawler* webCrawler,InvertedIndex* invertedIndex, BM25Ranker* ranker );
 // ~SearchEngine();
-std::vector<SearchResultDocument> search(const std::string search_query);
+std::vector<SearchResultDocument> search(const std::string search_query,double accuracy=0.5);
 void crawlAndIndexDocuments(std::queue<std::string>& seedUrls, int maximumNumberOfPages, bool clearHistory=false);
 void crawl(int maximumNumberOfPages,std::queue<std::string>& seedUrls);
 void terminateCrawl(bool clearDocumentsHistory=true);

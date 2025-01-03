@@ -5,9 +5,9 @@ SearchEngine::SearchEngine(WebCrawler *webCrawler, InvertedIndex *invertedIndex,
 {
 }
 
-std::vector<SearchResultDocument> SearchEngine::search(const std::string search_query)
+std::vector<SearchResultDocument> SearchEngine::search(const std::string search_query,double accuracy)
 {
-    return m_ranker->run(search_query);
+    return m_ranker->run(search_query,accuracy);
 }
 
 void SearchEngine::crawlAndIndexDocuments(std::queue<std::string> &seedUrls, int maximumNumberOfPages, bool clearHistory)
